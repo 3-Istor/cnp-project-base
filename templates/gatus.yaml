@@ -96,7 +96,7 @@ spec:
     - name: shared-gateway
       namespace: gateway-infra
   hostnames:
-    - "status.{{ .Values.projectName }}.3istor.com"
+    - "status-{{ .Values.projectName }}.3istor.com"
   rules:
     - backendRefs:
         - name: gatus

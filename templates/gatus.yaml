@@ -6,7 +6,7 @@ metadata:
   name: gatus-secrets
   namespace: project-{{ .Values.projectName }}-system
 spec:
-  path: kvv2/project-{{ .Values.projectName }}/system/config
+  path: project-{{ .Values.projectName }}/system/discord
   vaultRole: project-{{ .Values.projectName }}-system-role
   type: Opaque
   keys:

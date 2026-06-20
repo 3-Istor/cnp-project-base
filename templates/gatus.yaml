@@ -56,6 +56,13 @@ spec:
           image: twinproduction/gatus:v5.7.0
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              cpu: "50"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
           envFrom:
             - secretRef:
                 name: gatus-secrets

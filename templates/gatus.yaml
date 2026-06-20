@@ -1,0 +1,97 @@
+{{- if .Values.features.gatus }}
+---
+apiVersion: ricoberger.de/v1alpha1
+kind: VaultSecret
+metadata:
+  name: gatus-secrets
+  namespace: project-{{ .Values.projectName }}-system
+spec:
+  path: kvv2/project-{{ .Values.projectName }}/system/config
+  vaultRole: project-{{ .Values.projectName }}-system-role
+  type: Opaque
+  keys:
+    - DISCORD_WEBHOOK_URL
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+  namespace: project-{{ .Values.projectName }}-system
+data:
+  config.yaml: |
+    alerting:
+      discord:
+        webhook-url: "${DISCORD_WEBHOOK_URL}"
+    kubernetes:
+      service-discovery:
+        label-selector: "project={{ .Values.projectName }}"
+        service-name-template: "[NAME]"
+        service-url-template: "http://[NAME].[NAMESPACE].svc.cluster.local:[PORT][PATH]"
+    endpoints:
+      - name: OpenStack Control Plane
+        group: Infrastructure Host
+        url: "icmp://192.168.1.210"
+        interval: 1m
+        conditions:
+          - "[CONNECTED] == true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+  namespace: project-{{ .Values.projectName }}-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+    spec:
+      serviceAccountName: default 
+      containers:
+        - name: gatus
+          image: twinproduction/gatus:v5.7.0
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: gatus-secrets
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: gatus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+  namespace: project-{{ .Values.projectName }}-system
+spec:
+  selector:
+    app: gatus
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gatus-route
+  namespace: project-{{ .Values.projectName }}-system
+spec:
+  parentRefs:
+    - name: shared-gateway
+      namespace: gateway-infra
+  hostnames:
+    - "status.{{ .Values.projectName }}.3istor.com"
+  rules:
+    - backendRefs:
+        - name: gatus
+          port: 80
+{{- end }}

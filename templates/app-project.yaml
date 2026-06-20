@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.projectName }}
+  namespace: argocd
+spec:
+  description: "Isolated boundaries for project {{ .Values.projectName }}"
+  sourceRepos: ["*"]
+  destinations:
+    - namespace: "project-{{ .Values.projectName }}-*"
+      server: "https://kubernetes.default.svc"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: "Namespace"
+  roles:
+    - name: "project-admins"
+      description: "Admin privileges for {{ .Values.projectName }}"
+      policies:
+        - "p, proj:{{ .Values.projectName }}:project-admins, applications, *, {{ .Values.projectName }}/*, allow"
+      groups: ["project-{{ .Values.projectName }}-admins"]
+    - name: "project-members"
+      description: "Read-only privileges for {{ .Values.projectName }}"
+      policies:
+        - "p, proj:{{ .Values.projectName }}:project-members, applications, get, {{ .Values.projectName }}/*, allow"
+      groups: ["project-{{ .Values.projectName }}-members"]

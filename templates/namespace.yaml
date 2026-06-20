@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: project-{{ .Values.projectName }}-system
+  name: {{ .Values.projectName }}-system 
   labels:
     project: {{ .Values.projectName }}
     prod-gateway-access: "true"

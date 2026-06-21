@@ -76,9 +76,13 @@ spec:
         - name: gatus-sidecar
           image: ghcr.io/home-operations/gatus-sidecar:latest
           args:
-            - --enable-httproute 
-            - --annotation-enabled=gatus.3istor.com/{{ .Values.projectName }}-enabled
-            - --output=/config/gatus-sidecar.yaml
+            - "--enable-httproute"
+            - "--annotation-enabled"
+            - "gatus.3istor.com/{{ .Values.projectName }}-enabled"
+            - "--annotation-config"
+            - "gatus.3istor.com/{{ .Values.projectName }}-endpoint"
+            - "--output"
+            - "/config/gatus-sidecar.yaml"
           resources:
             requests:
               cpu: "10m"

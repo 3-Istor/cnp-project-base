@@ -1,0 +1,71 @@
+{{- if .Values.features.gatus }} 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offhours-guard
+  namespace: {{ .Values.projectName }}-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: offhours-guard
+  template:
+    metadata:
+      labels:
+        app: offhours-guard
+    spec:
+      serviceAccountName: default 
+      containers:
+        - name: offhours-guard
+          image: ghcr.io/thegostsniperfr/offhours-guard:sha-c003d9a
+          ports:
+            - containerPort: 8082
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi" 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: offhours-guard
+  namespace: {{ .Values.projectName }}-system
+spec:
+  selector:
+    app: offhours-guard
+  ports:
+    - port: 8082
+      targetPort: 8082
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: offhours-guard-{{ .Values.projectName }}
+rules:
+  - apiGroups: ["guard.3istor.com"]
+    resources: ["offhoursschedules"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "deployments/scale", "statefulsets/scale"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: offhours-guard-{{ .Values.projectName }}-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: offhours-guard-{{ .Values.projectName }}
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: {{ .Values.projectName }}-system
+{{- end }}

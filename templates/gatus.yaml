@@ -1,3 +1,5 @@
+# Gatus-sidecar for auto-discovery: https://github.com/home-operations/gatus-sidecar/tree/main
+
 {{- if .Values.features.gatus }}
 ---
 apiVersion: ricoberger.de/v1alpha1
@@ -15,18 +17,13 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: gatus-config
+  name: gatus-base-config
   namespace: {{ .Values.projectName }}-system
 data:
-  config.yaml: |
+  gatus-base.yaml: |
     alerting:
       discord:
         webhook-url: "${DISCORD_WEBHOOK_URL}"
-    kubernetes:
-      service-discovery:
-        label-selector: "project={{ .Values.projectName }}"
-        service-name-template: "[NAME]"
-        service-url-template: "http://[NAME].[NAMESPACE].svc.cluster.local:[PORT][PATH]"
     endpoints:
       - name: OpenStack Control Plane
         group: Infrastructure Host
@@ -50,12 +47,15 @@ spec:
       labels:
         app: gatus
     spec:
-      serviceAccountName: default 
+      serviceAccountName: default
       containers:
         - name: gatus
           image: twinproduction/gatus:v5.7.0
           ports:
             - containerPort: 8080
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: "/config" 
           resources:
             requests:
               cpu: "50m"
@@ -69,10 +69,27 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /config
+
+        - name: gatus-sidecar
+          image: ghcr.io/home-operations/gatus-sidecar:latest
+          args:
+            - --enable-httproute 
+            - --annotation-enabled=gatus.3istor.com/{{ .Values.projectName }}-enabled
+            - --output=/config/gatus-sidecar.yaml
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "50m"
+              memory: "32Mi"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+
       volumes:
         - name: config-volume
-          configMap:
-            name: gatus-config
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -101,4 +118,29 @@ spec:
     - backendRefs:
         - name: gatus
           port: 80
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gatus-sidecar-{{ .Values.projectName }}
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes", "gateways"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gatus-sidecar-{{ .Values.projectName }}-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gatus-sidecar-{{ .Values.projectName }}
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: {{ .Values.projectName }}-system
 {{- end }}

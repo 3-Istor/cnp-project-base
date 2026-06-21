@@ -69,6 +69,9 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /config
+            - name: base-config-volume
+              mountPath: /config/gatus-base.yaml
+              subPath: gatus-base.yaml
 
         - name: gatus-sidecar
           image: ghcr.io/home-operations/gatus-sidecar:latest
@@ -90,6 +93,9 @@ spec:
       volumes:
         - name: config-volume
           emptyDir: {}
+        - name: base-config-volume
+          configMap:
+            name: gatus-base-config
 ---
 apiVersion: v1
 kind: Service

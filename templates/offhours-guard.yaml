@@ -1,4 +1,4 @@
-{{- if .Values.features.gatus }} 
+{{- if .Values.features.gatus }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -15,19 +15,22 @@ spec:
       labels:
         app: offhours-guard
     spec:
-      serviceAccountName: default 
+      serviceAccountName: default
       containers:
         - name: offhours-guard
           image: ghcr.io/thegostsniperfr/offhours-guard:sha-c003d9a
           ports:
             - containerPort: 8082
+          env:
+            - name: PROJECT_NAME
+              value: {{ .Values.projectName | quote }}
           resources:
             requests:
               cpu: "50m"
               memory: "128Mi"
             limits:
               cpu: "200m"
-              memory: "128Mi" 
+              memory: "128Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -40,6 +43,22 @@ spec:
   ports:
     - port: 8082
       targetPort: 8082
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: offhours-route
+  namespace: {{ .Values.projectName }}-system
+spec:
+  parentRefs:
+    - name: shared-gateway
+      namespace: gateway-infra
+  hostnames:
+    - "offhours-{{ .Values.projectName }}.3istor.com"
+  rules:
+    - backendRefs:
+        - name: offhours-guard
+          port: 8082
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

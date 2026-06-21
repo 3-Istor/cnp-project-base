@@ -1,3 +1,6 @@
 projectName: "default"
 features:
   gatus: true
+
+offhours-guard:
+  fullnameOverride: "offhours-guard"

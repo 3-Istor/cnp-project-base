@@ -2,3 +2,7 @@ apiVersion: v2
 name: cnp-project-base
 description: Base Infrastructure for a CNP Project (ArgoCD AppProject, Gatus Monitoring, etc.)
 version: 0.1.0
+dependencies:
+  - name: offhours-guard
+    version: "1.1.0" 
+    repository: "oci://ghcr.io/thegostsniperfr/charts"

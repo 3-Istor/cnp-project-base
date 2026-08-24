@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":timezone(Europe/Paris)"
+  ],
+  "minimumReleaseAge": "14 days",
+  "helm-values": {
+    "managerFilePatterns": [
+      "/values.*\\.yaml$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDatasources": ["docker", "helm"],
+      "groupName": "Chart Dependencies (Minor & Patch)"
+    }
+  ],
+  "schedule": ["before 5am on monday"],
+  "prConcurrentLimit": 5
+}

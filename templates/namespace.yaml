@@ -1,3 +1,4 @@
+{{- if .Values.features.workloads }}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -6,3 +7,4 @@ metadata:
     project: {{ .Values.projectName }}
     prod-gateway-access: "true"
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+{{- end }}

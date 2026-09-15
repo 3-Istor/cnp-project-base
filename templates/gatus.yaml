@@ -1,6 +1,6 @@
 # Gatus-sidecar for auto-discovery: https://github.com/home-operations/gatus-sidecar/tree/main
 
-{{- if .Values.features.gatus }}
+{{- if and .Values.features.workloads .Values.features.gatus }}
 ---
 apiVersion: ricoberger.de/v1alpha1
 kind: VaultSecret

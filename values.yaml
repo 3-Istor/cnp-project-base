@@ -8,6 +8,11 @@ targetCloud: "onprem"
 domain: "3istor.com"
 
 features:
+  # The AppProject goes to the control plane cluster; the workloads go to the
+  # project's cluster. Two Applications, one chart, different flags.
+  appProject: true
+  workloads: true
+
   gatus: true
   # Per-project ingress unit (D-05, D-06). Off by default: existing projects
   # attach to the shared gateway and rely on the account-wide tunnel, and

@@ -1,4 +1,4 @@
-{{- if .Values.features.tunnel }}
+{{- if and .Values.features.workloads .Values.features.tunnel }}
 {{- $ns := include "cnp-project-base.systemNamespace" . -}}
 {{- $backend := printf "http://%s-gateway-front.%s.svc.cluster.local:80" .Values.projectName $ns -}}
 {{- /*

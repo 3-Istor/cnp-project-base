@@ -1,0 +1,74 @@
+{{- if .Values.features.gateway }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.projectName }}-gateway
+  namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  listeners:
+    - name: http-wildcard
+      protocol: HTTP
+      port: 80
+      hostname: "*.{{ .Values.domain }}"
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              {{- /*
+                Per-project, not the global prod-gateway-access: "true" the shared
+                gateway uses. With the global label a route in project A can
+                attach to project B's Gateway, which is exactly the blast radius
+                a per-project Gateway exists to prevent.
+              */}}
+              cnp.3istor.com/project: {{ .Values.projectName | quote }}
+---
+{{- /*
+  Envoy Gateway derives the name of the Service it creates from the Gateway's
+  namespace and name plus a hash — envoy-gateway-infra-shared-gateway-ac1e5388
+  is the current one, and it differs on a fresh cluster and on every per-project
+  Gateway. The tunnel config cannot reference a name nobody controls, so this
+  Service selects the same Envoy pods under a name we own.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.projectName }}-gateway-front
+  namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    gateway.envoyproxy.io/owning-gateway-name: {{ .Values.projectName }}-gateway
+    gateway.envoyproxy.io/owning-gateway-namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: 10080
+      protocol: TCP
+---
+{{- /*
+  Currently attached only to the shared gateway. Losing it on a per-project
+  Gateway silently breaks client IP for every app behind it — the request
+  succeeds, the logged address is Cloudflare's.
+*/}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: {{ .Values.projectName }}-trust-cloudflare
+  namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ .Values.projectName }}-gateway
+  clientIPDetection:
+    xForwardedFor:
+      numTrustedHops: {{ .Values.gateway.numTrustedHops }}
+{{- end }}

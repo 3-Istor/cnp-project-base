@@ -1,0 +1,100 @@
+{{- if .Values.features.tunnel }}
+{{- $ns := include "cnp-project-base.systemNamespace" . -}}
+{{- $backend := printf "http://%s-gateway-front.%s.svc.cluster.local:80" .Values.projectName $ns -}}
+{{- /*
+  The tunnel credential is minted by Terraform and written to Vault, never to
+  etcd directly (D-02). The operator syncs it into this namespace.
+*/}}
+apiVersion: ricoberger.de/v1alpha1
+kind: VaultSecret
+metadata:
+  name: cloudflare-tunnel-token
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  path: project-{{ .Values.projectName }}/system/tunnel
+  vaultRole: project-{{ .Values.projectName }}-system-role
+  type: Opaque
+  keys:
+    - token
+---
+{{- /*
+  Ingress rules as Git state rather than Cloudflare state (D-06).
+
+  With config_src = "cloudflare", adding a route to a running project needs the
+  Cloudflare API, which needs the on-prem runner. With a local config file the
+  route change flows through Argo CD like everything else and the connector
+  reloads it itself.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.projectName }}-tunnel-config
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    ingress:
+    {{- range .Values.tunnel.hostnames }}
+      - hostname: {{ . | quote }}
+        service: {{ $backend | quote }}
+    {{- end }}
+      - hostname: {{ printf "status-%s.%s" .Values.projectName .Values.domain | quote }}
+        service: {{ $backend | quote }}
+      - hostname: {{ printf "offhours-%s.%s" .Values.projectName .Values.domain | quote }}
+        service: {{ $backend | quote }}
+      - service: http_status:404
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.projectName }}-tunnel
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+    component: cloudflared-tunnel
+spec:
+  replicas: {{ .Values.tunnel.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.projectName }}-tunnel
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.projectName }}-tunnel
+        {{- include "cnp-project-base.labels" . | nindent 8 }}
+      annotations:
+        # Roll the connector when the routing table changes, so a route edit
+        # takes effect without a manual restart.
+        cnp.3istor.com/tunnel-config: {{ .Values.tunnel.hostnames | toJson | sha256sum | trunc 16 }}
+    spec:
+      containers:
+        - name: cloudflared
+          image: {{ .Values.tunnel.image }}
+          args:
+            - "tunnel"
+            - "--no-autoupdate"
+            - "--config"
+            - "/etc/cloudflared/config.yaml"
+            - "run"
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-tunnel-token
+                  key: token
+          volumeMounts:
+            - name: tunnel-config
+              mountPath: /etc/cloudflared
+              readOnly: true
+          resources:
+            {{- toYaml .Values.tunnel.resources | nindent 12 }}
+      volumes:
+        - name: tunnel-config
+          configMap:
+            name: {{ .Values.projectName }}-tunnel-config
+{{- end }}

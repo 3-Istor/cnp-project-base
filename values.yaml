@@ -1,6 +1,44 @@
 projectName: "default"
+
+# Mirrors the registry record's spec.targetCloud. Used as a uniform marker on
+# every object so the cleanup job can find them (D-13), not to make placement
+# decisions — Argo CD's destination does that.
+targetCloud: "onprem"
+
+domain: "3istor.com"
+
 features:
   gatus: true
+  # Per-project ingress unit (D-05, D-06). Off by default: existing projects
+  # attach to the shared gateway and rely on the account-wide tunnel, and
+  # turning these on is a per-project migration, not a chart upgrade.
+  gateway: false
+  tunnel: false
+
+gateway:
+  # The cluster team owns the GatewayClass and the controller; CNP creates and
+  # destroys the Gateway object at project level.
+  className: eg
+  numTrustedHops: 1
+  # Where routes attach when features.gateway is false.
+  shared:
+    name: shared-gateway
+    namespace: gateway-infra
+
+tunnel:
+  image: cloudflare/cloudflared:latest
+  replicas: 1
+  # Application hostnames this project's connector serves, in addition to the
+  # status- and offhours- hostnames which are always included. Rendered from the
+  # registry record's spec.apps[].hostnames.
+  hostnames: []
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "16Mi"
+    limits:
+      cpu: "50m"
+      memory: "32Mi"
 
 offhours-guard:
   fullnameOverride: "offhours-guard"

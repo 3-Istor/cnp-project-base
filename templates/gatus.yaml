@@ -121,8 +121,7 @@ metadata:
   namespace: {{ .Values.projectName }}-system
 spec:
   parentRefs:
-    - name: shared-gateway
-      namespace: gateway-infra
+    {{- include "cnp-project-base.gatewayRef" . | nindent 4 }}
   hostnames:
     - "status-{{ .Values.projectName }}.3istor.com"
   rules:

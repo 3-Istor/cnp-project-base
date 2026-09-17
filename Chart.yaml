@@ -4,5 +4,8 @@ description: Base Infrastructure for a CNP Project (ArgoCD AppProject, Gatus Mon
 version: 0.1.0
 dependencies:
   - name: offhours-guard
-    version: "1.1.1" 
+    version: "1.1.1"
     repository: "oci://ghcr.io/thegostsniperfr/charts"
+    # The control-plane Application carries only the AppProject; offhours-guard
+    # enforcement is local to the project's cluster.
+    condition: features.workloads

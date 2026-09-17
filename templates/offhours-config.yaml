@@ -1,4 +1,4 @@
-{{- if .Values.features.gatus }}
+{{- if and .Values.features.workloads .Values.features.gatus }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -6,8 +6,7 @@ metadata:
   namespace: {{ .Values.projectName }}-system
 spec:
   parentRefs:
-    - name: shared-gateway
-      namespace: gateway-infra
+    {{- include "cnp-project-base.gatewayRef" . | nindent 4 }}
   hostnames:
     - "offhours-{{ .Values.projectName }}.3istor.com"
   rules:

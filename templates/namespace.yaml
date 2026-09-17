@@ -1,7 +1,10 @@
+{{- if .Values.features.workloads }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.projectName }}-system 
+  name: {{ include "cnp-project-base.systemNamespace" . }} 
   labels:
     project: {{ .Values.projectName }}
     prod-gateway-access: "true"
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+{{- end }}

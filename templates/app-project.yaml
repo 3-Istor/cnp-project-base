@@ -1,14 +1,30 @@
+{{- if .Values.features.appProject }}
+{{- /*
+  The AppProject lives in the argocd namespace on the CONTROL PLANE cluster,
+  not on the project's target cluster. When a project runs on AWS, rendering
+  this into the AWS cluster creates an object Argo CD never reads.
+
+  So it is gated: the ApplicationSet creates two Applications per project — one
+  carrying the AppProject to the control plane, one carrying the workloads to
+  the project's cluster.
+*/}}
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: {{ .Values.projectName }}
   namespace: argocd
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
   sourceRepos: ["*"]
   destinations:
+    {{- /*
+      Restricted to this project's cluster, addressed by name. A mis-generated
+      Application cannot land on the wrong cloud (D-03) — Argo CD rejects it.
+    */}}
     - namespace: "{{ .Values.projectName }}-*"
-      server: "https://kubernetes.default.svc"
+      name: {{ .Values.targetCloud | quote }}
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
@@ -26,3 +42,4 @@ spec:
       policies:
         - "p, proj:{{ .Values.projectName }}:project-members, applications, get, {{ .Values.projectName }}/*, allow"
       groups: ["project-{{ .Values.projectName }}-members"]
+{{- end }}

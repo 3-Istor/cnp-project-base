@@ -25,6 +25,18 @@ spec:
     */}}
     - namespace: "{{ .Values.projectName }}-*"
       name: {{ .Values.targetCloud | quote }}
+    {{- /*
+      Dedicated Keycloak's database lives in the shared cnp-projects-db
+      namespace on this same cluster, not under <project>-* (WS-5) — the
+      Database/DatabaseRole/VaultSecret objects targeting it are otherwise
+      rejected by this AppProject, found live: "namespace cnp-projects-db is
+      not permitted in project '<name>'" (2026-09-18). Gated on the feature so
+      projects without a dedicated Keycloak don't get this destination.
+    */}}
+    {{- if .Values.features.keycloak }}
+    - namespace: {{ .Values.keycloak.db.namespace | quote }}
+      name: {{ .Values.targetCloud | quote }}
+    {{- end }}
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"

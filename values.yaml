@@ -59,7 +59,11 @@ keycloak:
   theme:
     image: ghcr.io/thegostsniperfr/keycloak-theme-kube-lab:latest
   configCli:
-    image: adorsys/keycloak-config-cli:6.5.1
+    # Pinning to a specific tag failed live ("v6.5.1"/"6.5.1" both 404 on
+    # Docker Hub despite that being the version string the tool prints on
+    # boot) — using :latest, proven working in Batch I, until a real
+    # tag scheme is confirmed.
+    image: adorsys/keycloak-config-cli:latest
     # keycloak-config-cli's own wait-for-Keycloak, so the PostSync Job doesn't
     # need a hand-rolled retry loop. Generous because the pod's own
     # startupProbe already allows up to 5 minutes.

@@ -88,6 +88,12 @@ spec:
       containers:
         - name: keycloak-config-cli
           image: {{ .Values.keycloak.configCli.image }}
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "256Mi"
+            limits:
+              memory: "256Mi"
           env:
             - name: KEYCLOAK_URL
               value: "http://{{ .Values.projectName }}-keycloak:8080"

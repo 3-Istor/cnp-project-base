@@ -1,0 +1,140 @@
+{{- if and .Values.features.workloads .Values.features.keycloak }}
+{{- $ns := include "cnp-project-base.systemNamespace" . -}}
+{{- /*
+  Proven live in Batch I (see MULTICLOUD-ROLLOUT-LOG.md, entry I1): this realm
+  reproduces what project-bootstrap's Terraform used to create for the tenant
+  realm — realm + login theme + one admin user — plus the identity-brokering
+  block, which Batch I deferred because it needs a real broker client to point
+  at (created centrally by Terraform, per Brian's 2026-09-18 decision).
+
+  No secret value is ever written here in plaintext — keycloak-config-cli's
+  own $(env:VAR) substitution resolves them from the Job's env at apply time,
+  itself sourced from Kubernetes Secrets, never from this ConfigMap.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.projectName }}-keycloak-realm
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+data:
+  realm.json: |
+    {
+      "realm": "{{ .Values.projectName }}",
+      "enabled": true,
+      "displayName": "{{ .Values.projectName | title }} App Realm",
+      "loginTheme": "keycloak-theme-kube-lab",
+      "sslRequired": "external",
+      "registrationAllowed": false,
+      "bruteForceProtected": false,
+      "users": [
+        {
+          "username": "$(env:ADMIN_USERNAME)",
+          "enabled": true,
+          "emailVerified": true,
+          "requiredActions": [],
+          "credentials": [
+            {
+              "type": "password",
+              "value": "$(env:ADMIN_PASSWORD)",
+              "temporary": false
+            }
+          ],
+          "clientRoles": {
+            "realm-management": ["realm-admin"]
+          }
+        }
+      ],
+      "identityProviders": [
+        {
+          "alias": "3istor-platform",
+          "providerId": "oidc",
+          "enabled": true,
+          "displayName": "Log in with 3istor Platform",
+          "config": {
+            "authorizationUrl": "https://auth.3istor.com/realms/3istor/protocol/openid-connect/auth",
+            "tokenUrl": "https://auth.3istor.com/realms/3istor/protocol/openid-connect/token",
+            "clientId": "$(env:BROKER_CLIENT_ID)",
+            "clientSecret": "$(env:BROKER_CLIENT_SECRET)",
+            "defaultScopes": "openid profile email"
+          }
+        }
+      ]
+    }
+---
+{{- /*
+  Re-applied on every Argo sync (PostSync hook, not a plain resource): the
+  same idempotency Batch I proved live — a clean re-run is a no-op, ~1s.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.projectName }}-keycloak-config
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "cnp-project-base.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-config-cli
+          image: {{ .Values.keycloak.configCli.image }}
+          env:
+            - name: KEYCLOAK_URL
+              value: "http://{{ .Values.projectName }}-keycloak:8080"
+            - name: KEYCLOAK_USER
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-password
+                  key: username
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-password
+                  key: password
+            - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
+              value: "true"
+            - name: KEYCLOAK_AVAILABILITYCHECK_TIMEOUT
+              value: {{ .Values.keycloak.configCli.availabilityCheckTimeout | quote }}
+            - name: IMPORT_FILES_LOCATIONS
+              value: "/config/*.json"
+            - name: IMPORT_VAR_SUBSTITUTION_ENABLED
+              value: "true"
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-password
+                  key: username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin-password
+                  key: password
+            - name: BROKER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-broker-secret
+                  key: client_id
+            - name: BROKER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-broker-secret
+                  key: client_secret
+          volumeMounts:
+            - name: realm-config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: realm-config
+          configMap:
+            name: {{ .Values.projectName }}-keycloak-realm
+{{- end }}

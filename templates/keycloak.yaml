@@ -44,6 +44,12 @@ spec:
         - name: theme-provider-init
           image: {{ .Values.keycloak.theme.image }}
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              memory: "32Mi"
           volumeMounts:
             - name: theme-providers
               mountPath: /providers
@@ -53,10 +59,10 @@ spec:
           command:
             - "/opt/keycloak/bin/kc.sh"
             - "start"
+            - "--http-enabled=true"
             - "--http-port=8080"
+            - "--proxy-headers=xforwarded"
           env:
-            - name: KC_PROXY
-              value: edge
             - name: KC_HEALTH_ENABLED
               value: "true"
             # Pinned identically for the browser and for Envoy (R-3) — never
@@ -67,6 +73,10 @@ spec:
               value: {{ $issuer | quote }}
             - name: KC_HOSTNAME_STRICT
               value: "true"
+            # Envoy terminates real TLS and forwards plain HTTP with
+            # X-Forwarded-Proto (--proxy-headers=xforwarded above) — this only
+            # tells Keycloak to generate https:// URLs, not to expect TLS on
+            # its own listener.
             - name: KC_HOSTNAME_STRICT_HTTPS
               value: "true"
             - name: KEYCLOAK_ADMIN

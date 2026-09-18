@@ -31,3 +31,21 @@ its own system namespace instead (D-05).
   namespace: {{ .Values.gateway.shared.namespace }}
 {{- end -}}
 {{- end }}
+
+{{/*
+Postgres identifiers can't contain hyphens; project names can (D-01's registry
+allows them). Used as both the per-project database name and its owning role
+name on the shared cluster (WS-5).
+*/}}
+{{- define "cnp-project-base.keycloakDbName" -}}
+kc_{{ .Values.projectName | replace "-" "_" }}
+{{- end }}
+
+{{/*
+The dedicated per-project Keycloak's public issuer — pinned identically for
+the browser and for Envoy's SecurityPolicy (R-3: never point either at a
+.svc address, or token validation fails at the edge instead of at deploy).
+*/}}
+{{- define "cnp-project-base.keycloakIssuer" -}}
+https://auth-{{ .Values.projectName }}.{{ .Values.domain }}
+{{- end }}

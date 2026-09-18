@@ -1,0 +1,54 @@
+{{- if and .Values.features.workloads .Values.features.keycloak }}
+{{- $dbname := include "cnp-project-base.keycloakDbName" . -}}
+{{- /*
+  The DatabaseRole's passwordSecret must live in the same namespace as the
+  DatabaseRole itself (Kubernetes has no cross-namespace secretKeyRef) — this
+  is the shared-namespace twin of keycloak-secrets.yaml's keycloak-db-credentials.
+*/}}
+apiVersion: ricoberger.de/v1alpha1
+kind: VaultSecret
+metadata:
+  name: {{ .Values.projectName }}-keycloak-db-credentials
+  namespace: {{ .Values.keycloak.db.namespace }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  path: project-{{ .Values.projectName }}/system/keycloak-db
+  vaultRole: project-{{ .Values.projectName }}-system-role
+  type: kubernetes.io/basic-auth
+  keys:
+    - username
+    - password
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: kc-{{ .Values.projectName }}
+  namespace: {{ .Values.keycloak.db.namespace }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  cluster:
+    name: {{ .Values.keycloak.db.cluster }}
+  name: {{ $dbname }}
+  login: true
+  passwordSecret:
+    name: {{ .Values.projectName }}-keycloak-db-credentials
+  databaseRoleReclaimPolicy: delete
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: kc-{{ .Values.projectName }}
+  namespace: {{ .Values.keycloak.db.namespace }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  cluster:
+    name: {{ .Values.keycloak.db.cluster }}
+  name: {{ $dbname }}
+  owner: {{ $dbname }}
+  databaseReclaimPolicy: delete
+{{- end }}

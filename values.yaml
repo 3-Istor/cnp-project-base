@@ -19,6 +19,10 @@ features:
   # turning these on is a per-project migration, not a chart upgrade.
   gateway: false
   tunnel: false
+  # Dedicated per-project identity (WS-5, D-04). Off by default — existing
+  # projects keep using the central Keycloak's tenant realm until they're
+  # migrated on purpose, not as a side effect of a chart upgrade.
+  keycloak: false
 
 gateway:
   # The cluster team owns the GatewayClass and the controller; CNP creates and
@@ -47,3 +51,28 @@ tunnel:
 
 offhours-guard:
   fullnameOverride: "offhours-guard"
+
+keycloak:
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.5.5"
+  theme:
+    image: ghcr.io/thegostsniperfr/keycloak-theme-kube-lab:latest
+  configCli:
+    image: adorsys/keycloak-config-cli:6.5.1
+    # keycloak-config-cli's own wait-for-Keycloak, so the PostSync Job doesn't
+    # need a hand-rolled retry loop. Generous because the pod's own
+    # startupProbe already allows up to 5 minutes.
+    availabilityCheckTimeout: "180s"
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "512Mi"
+    limits:
+      memory: "512Mi"
+  db:
+    # Shared Postgres every project's dedicated Keycloak database lives inside
+    # (WS-5's cost argument — a pod-and-a-half per project, not two).
+    # K3s/k8s/config/cnp-projects-db.
+    cluster: cnp-projects-keycloak
+    namespace: cnp-projects-db

@@ -110,16 +110,21 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            # Keycloak 26.x serves /health/* on a separate management
+            # interface, not the app port — found live, probes on "http"
+            # never went ready even though the server had actually started.
+            - name: management
+              containerPort: 9000
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: http
+              port: management
             initialDelaySeconds: 30
             timeoutSeconds: 1
           startupProbe:
             httpGet:
               path: /health
-              port: http
+              port: management
             initialDelaySeconds: 30
             timeoutSeconds: 1
             failureThreshold: 60

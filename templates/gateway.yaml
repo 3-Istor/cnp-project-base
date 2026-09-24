@@ -1,13 +1,48 @@
 {{- if and .Values.features.workloads .Values.features.gateway }}
+{{- $ns := include "cnp-project-base.systemNamespace" . -}}
+{{- /*
+  Envoy Gateway deploys the actual proxy (and its Service) into its own
+  operator-wide namespace, named by hashing the Gateway's identity — a
+  different, unpredictable name per project. Gateway.spec.infrastructure
+  lets a Gateway pin that Service to a name we choose instead, which the
+  ExternalName Service below can then reference by construction rather than
+  guessing. This EnvoyProxy fully replaces (not merges with) the
+  GatewayClass-level one (gateway-infra/custom-proxy-config) for this
+  Gateway, so it repeats that config's settings deliberately.
+*/}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: {{ .Values.projectName }}-envoy-config
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  logging:
+    level:
+      default: warn
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: {{ .Values.projectName }}-envoy
+        type: ClusterIP
+        externalTrafficPolicy: Local
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: {{ .Values.projectName }}-gateway
-  namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  namespace: {{ $ns }}
   labels:
     {{- include "cnp-project-base.labels" . | nindent 4 }}
 spec:
   gatewayClassName: {{ .Values.gateway.className }}
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: {{ .Values.projectName }}-envoy-config
   listeners:
     - name: http-wildcard
       protocol: HTTP
@@ -27,28 +62,26 @@ spec:
               cnp.3istor.com/project: {{ .Values.projectName | quote }}
 ---
 {{- /*
-  Envoy Gateway derives the name of the Service it creates from the Gateway's
-  namespace and name plus a hash — envoy-gateway-infra-shared-gateway-ac1e5388
-  is the current one, and it differs on a fresh cluster and on every per-project
-  Gateway. The tunnel config cannot reference a name nobody controls, so this
-  Service selects the same Envoy pods under a name we own.
+  A Kubernetes Service can only select pods in its own namespace, and Envoy
+  Gateway's managed proxy always lands in the controller's namespace
+  (envoy-gateway-system here), never the Gateway's own — so a selector-based
+  Service here could never have endpoints regardless of which labels it used
+  (confirmed live: 0 endpoints, every request 502). ExternalName aliases to
+  the real Service instead, at the name the EnvoyProxy above pinned it to.
 */}}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.projectName }}-gateway-front
-  namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  namespace: {{ $ns }}
   labels:
     {{- include "cnp-project-base.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
-  selector:
-    gateway.envoyproxy.io/owning-gateway-name: {{ .Values.projectName }}-gateway
-    gateway.envoyproxy.io/owning-gateway-namespace: {{ include "cnp-project-base.systemNamespace" . }}
+  type: ExternalName
+  externalName: {{ .Values.projectName }}-envoy.envoy-gateway-system.svc.cluster.local
   ports:
     - name: http
       port: 80
-      targetPort: 10080
       protocol: TCP
 ---
 {{- /*

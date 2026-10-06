@@ -1,13 +1,85 @@
 {{- if .Values.features.appProject }}
 {{- /*
-  The AppProject lives in the argocd namespace on the CONTROL PLANE cluster,
+  The AppProjects live in the argocd namespace on the CONTROL PLANE cluster,
   not on the project's target cluster. When a project runs on AWS, rendering
-  this into the AWS cluster creates an object Argo CD never reads.
+  them into the AWS cluster creates objects Argo CD never reads.
 
-  So it is gated: the ApplicationSet creates two Applications per project — one
-  carrying the AppProject to the control plane, one carrying the workloads to
+  So they are gated: the ApplicationSet creates two Applications per project — one
+  carrying the AppProjects to the control plane, one carrying the workloads to
   the project's cluster.
+
+  Two AppProjects per project, because the two halves are trusted differently:
+  - <name>-platform runs this chart. Its source is pinned to cnp-project-base,
+    which only platform admins merge into, so it may hold the cluster-scoped
+    objects the system namespace needs (gatus' ClusterRole and binding).
+  - <name> runs the project's apps, from sources the project's admins control.
+    It gets no cluster-scoped kinds and no network policy kinds: with either,
+    a project admin can create an Application that binds cluster-admin or
+    opens the default deny, and the boundary is gone.
 */}}
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.projectName }}-platform
+  namespace: argocd
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  description: "Platform-owned base of project {{ .Values.projectName }}"
+  sourceRepos:
+    - https://github.com/3-Istor/cnp-project-base.git
+  destinations:
+    {{- /*
+      Restricted to this project's cluster, addressed by name. A mis-generated
+      Application cannot land on the wrong cloud (D-03) — Argo CD rejects it.
+    */}}
+    - namespace: {{ include "cnp-project-base.systemNamespace" . | quote }}
+      name: {{ .Values.targetCloud | quote }}
+    {{- /*
+      Dedicated Keycloak's database lives in the shared cnp-projects-db
+      namespace on this same cluster, not in the system namespace (WS-5) — the
+      Database/DatabaseRole/VaultSecret objects targeting it are otherwise
+      rejected, found live: "namespace cnp-projects-db is not permitted in
+      project '<name>'" (2026-09-18).
+    */}}
+    {{- if .Values.features.keycloak }}
+    - namespace: {{ .Values.keycloak.db.namespace | quote }}
+      name: {{ .Values.targetCloud | quote }}
+    {{- end }}
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  {{- /*
+    Exact names, not "<name>-*" globs: a glob would also match the objects of
+    a project whose name starts with "<name>-". Adding a cluster-scoped object
+    to this chart means adding its name here.
+  */}}
+  {{- $system := include "cnp-project-base.systemNamespace" . }}
+  clusterResourceWhitelist:
+    - group: ""
+      kind: "Namespace"
+      name: {{ $system | quote }}
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRole"
+      name: "gatus-sidecar-{{ .Values.projectName }}"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRoleBinding"
+      name: "gatus-sidecar-{{ .Values.projectName }}-binding"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRole"
+      name: "offhours-guard-{{ $system }}-role"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRoleBinding"
+      name: "offhours-guard-{{ $system }}-rolebinding"
+  roles:
+    - name: "project-viewers"
+      description: "Read-only view of {{ .Values.projectName }}'s base"
+      policies:
+        - "p, proj:{{ .Values.projectName }}-platform:project-viewers, applications, get, {{ .Values.projectName }}-platform/*, allow"
+      groups:
+        - "project-{{ .Values.projectName }}-admins"
+        - "project-{{ .Values.projectName }}-members"
+---
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -17,41 +89,62 @@ metadata:
     {{- include "cnp-project-base.labels" . | nindent 4 }}
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
-  sourceRepos: ["*"]
-  destinations:
-    {{- /*
-      Restricted to this project's cluster, addressed by name. A mis-generated
-      Application cannot land on the wrong cloud (D-03) — Argo CD rejects it.
-    */}}
-    - namespace: "{{ .Values.projectName }}-*"
-      name: {{ .Values.targetCloud | quote }}
-    {{- /*
-      Dedicated Keycloak's database lives in the shared cnp-projects-db
-      namespace on this same cluster, not under <project>-* (WS-5) — the
-      Database/DatabaseRole/VaultSecret objects targeting it are otherwise
-      rejected by this AppProject, found live: "namespace cnp-projects-db is
-      not permitted in project '<name>'" (2026-09-18). Gated on the feature so
-      projects without a dedicated Keycloak don't get this destination.
-    */}}
-    {{- if .Values.features.keycloak }}
-    - namespace: {{ .Values.keycloak.db.namespace | quote }}
-      name: {{ .Values.targetCloud | quote }}
+  sourceRepos:
+    - https://github.com/3-Istor/infra-templates.git
+    {{- range .Values.apps }}
+    - {{ .repoURL | quote }}
     {{- end }}
+  {{- /*
+    One destination per registered app, never "<name>-*": that glob also
+    matches every namespace of a project whose name starts with "<name>-".
+  */}}
+  {{- if .Values.apps }}
+  destinations:
+    {{- range .Values.apps }}
+    - namespace: "{{ $.Values.projectName }}-{{ .name }}"
+      name: {{ $.Values.targetCloud | quote }}
+    {{- end }}
+  {{- else }}
+  destinations: []
+  {{- end }}
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
+  namespaceResourceBlacklist:
+    - group: "cilium.io"
+      kind: "*"
+    - group: "networking.k8s.io"
+      kind: "NetworkPolicy"
+    - group: ""
+      kind: "ResourceQuota"
+    - group: ""
+      kind: "LimitRange"
+  {{- /*
+    Namespace is needed for CreateNamespace=true and managedNamespaceMetadata.
+    Argo CD checks cluster-scoped objects by name only, never against
+    destinations, so each entry is pinned to its app's namespace: unpinned, an
+    Application could relabel any namespace on the cluster.
+  */}}
+  {{- if .Values.apps }}
   clusterResourceWhitelist:
+    {{- range .Values.apps }}
     - group: ""
       kind: "Namespace"
-    - group: "rbac.authorization.k8s.io"
-      kind: "ClusterRole"
-    - group: "rbac.authorization.k8s.io"
-      kind: "ClusterRoleBinding"
+      name: "{{ $.Values.projectName }}-{{ .name }}"
+    {{- end }}
+  {{- end }}
   roles:
     - name: "project-admins"
-      description: "Admin privileges for {{ .Values.projectName }}"
+      description: "Operate {{ .Values.projectName }}'s applications"
+      {{- /*
+        No create/update/delete: Applications come from the registry through
+        the ApplicationSet. An admin who can create one picks its source.
+      */}}
       policies:
-        - "p, proj:{{ .Values.projectName }}:project-admins, applications, *, {{ .Values.projectName }}/*, allow"
+        - "p, proj:{{ .Values.projectName }}:project-admins, applications, get, {{ .Values.projectName }}/*, allow"
+        - "p, proj:{{ .Values.projectName }}:project-admins, applications, sync, {{ .Values.projectName }}/*, allow"
+        - "p, proj:{{ .Values.projectName }}:project-admins, applications, action/*, {{ .Values.projectName }}/*, allow"
+        - "p, proj:{{ .Values.projectName }}:project-admins, logs, get, {{ .Values.projectName }}/*, allow"
       groups: ["project-{{ .Values.projectName }}-admins"]
     - name: "project-members"
       description: "Read-only privileges for {{ .Values.projectName }}"

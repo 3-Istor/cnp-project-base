@@ -24,6 +24,10 @@ features:
   # migrated on purpose, not as a side effect of a chart upgrade.
   keycloak: false
 
+# The registry record's spec.apps (name, repoURL). Only the AppProject reads
+# it: each app gets exactly one destination namespace and one allowed source.
+apps: []
+
 gateway:
   # The cluster team owns the GatewayClass and the controller; CNP creates and
   # destroys the Gateway object at project level.

@@ -76,6 +76,9 @@ spec:
       kind: "Namespace"
       name: "{{ $.Values.projectName }}-{{ .name }}"
     {{- end }}
+    - group: "cilium.io"
+      kind: "CiliumClusterwideNetworkPolicy"
+      name: "cnp-project-{{ .Values.projectName }}-ingress"
   roles:
     - name: "project-viewers"
       description: "Read-only view of {{ .Values.projectName }}'s base"

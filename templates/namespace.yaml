@@ -2,17 +2,27 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ include "cnp-project-base.systemNamespace" . }} 
+  name: {{ include "cnp-project-base.systemNamespace" . }}
   labels:
     project: {{ .Values.projectName }}
     prod-gateway-access: "true"
-    {{- /*
-      Baseline is enforced: it blocks host access and privileged pods, which
-      would make the namespace a way onto the node. Restricted is only audited
-      and warned until the platform's own images and infra-templates comply.
-    */}}
-    pod-security.kubernetes.io/enforce: baseline
-    pod-security.kubernetes.io/audit: restricted
-    pod-security.kubernetes.io/warn: restricted
+    {{- include "cnp-project-base.podSecurityLabels" . | nindent 4 }}
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+{{- /*
+  App namespaces are owned here rather than created by each app's
+  CreateNamespace=true: Argo CD never deletes a namespace it created that way,
+  so removing an app from the registry used to leave its namespace, and
+  everything Argo CD did not create in it (CNPG volumes), behind. Owned here,
+  the namespace is pruned when the app leaves the record.
+*/}}
+{{- range .Values.apps }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $.Values.projectName }}-{{ .name }}
+  labels:
+    {{- include "cnp-project-base.podSecurityLabels" $ | nindent 4 }}
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+{{- end }}
 {{- end }}

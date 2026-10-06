@@ -71,6 +71,11 @@ spec:
     - group: "rbac.authorization.k8s.io"
       kind: "ClusterRoleBinding"
       name: "offhours-guard-{{ $system }}-rolebinding"
+    {{- range .Values.apps }}
+    - group: ""
+      kind: "Namespace"
+      name: "{{ $.Values.projectName }}-{{ .name }}"
+    {{- end }}
   roles:
     - name: "project-viewers"
       description: "Read-only view of {{ .Values.projectName }}'s base"
@@ -120,19 +125,9 @@ spec:
     - group: ""
       kind: "LimitRange"
   {{- /*
-    Namespace is needed for CreateNamespace=true and managedNamespaceMetadata.
-    Argo CD checks cluster-scoped objects by name only, never against
-    destinations, so each entry is pinned to its app's namespace: unpinned, an
-    Application could relabel any namespace on the cluster.
+    No cluster-scoped kinds at all: app namespaces are created by the
+    platform's chart, not by the apps (templates/namespace.yaml).
   */}}
-  {{- if .Values.apps }}
-  clusterResourceWhitelist:
-    {{- range .Values.apps }}
-    - group: ""
-      kind: "Namespace"
-      name: "{{ $.Values.projectName }}-{{ .name }}"
-    {{- end }}
-  {{- end }}
   roles:
     - name: "project-admins"
       description: "Operate {{ .Values.projectName }}'s applications"

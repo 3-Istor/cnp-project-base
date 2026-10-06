@@ -1,0 +1,35 @@
+{{- if and .Values.features.workloads .Values.features.networkIsolation }}
+{{- /*
+  Ingress default deny for every namespace of the project (system and apps),
+  as one cluster-wide policy so it covers app namespaces too. Egress stays
+  open: another project cannot accept the traffic anyway, and per-project
+  egress rules are a later, self-service step. Tenants cannot create cilium.io
+  objects (tenant AppProject blacklist), so they cannot widen this.
+*/}}
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: cnp-project-{{ .Values.projectName }}-ingress
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:io.cilium.k8s.namespace.labels.cnp.3istor.com/project: {{ .Values.projectName | quote }}
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.cilium.k8s.namespace.labels.cnp.3istor.com/project: {{ .Values.projectName | quote }}
+        {{- /* Every Gateway's proxy runs here, whichever project owns it. */}}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+        {{- /* The CNPG operator talks to each instance's manager. */}}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
+    {{- /* Kubelet probes. */}}
+    - fromEntities:
+        - host
+        - remote-node
+{{- end }}

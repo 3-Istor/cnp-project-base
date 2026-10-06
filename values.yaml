@@ -23,6 +23,9 @@ features:
   # projects keep using the central Keycloak's tenant realm until they're
   # migrated on purpose, not as a side effect of a chart upgrade.
   keycloak: false
+  # Ingress default deny across the project's namespaces
+  # (templates/network-policy.yaml).
+  networkIsolation: true
 
 # The registry record's spec.apps (name, repoURL). The AppProjects give each
 # app one destination namespace and one allowed source; the workloads render

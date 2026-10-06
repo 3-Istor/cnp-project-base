@@ -16,6 +16,17 @@ cnp.3istor.com/cloud: {{ .Values.targetCloud | quote }}
 {{- end }}
 
 {{/*
+Baseline is enforced: it blocks host access and privileged pods, which would
+make a project namespace a way onto the node. Restricted is only audited and
+warned until the platform's own images and infra-templates comply.
+*/}}
+{{- define "cnp-project-base.podSecurityLabels" -}}
+pod-security.kubernetes.io/enforce: baseline
+pod-security.kubernetes.io/audit: restricted
+pod-security.kubernetes.io/warn: restricted
+{{- end }}
+
+{{/*
 Where this project's HTTPRoutes attach.
 
 Defaults to the shared gateway, which is where every existing project attaches

@@ -40,7 +40,7 @@ gateway:
     namespace: gateway-infra
 
 tunnel:
-  image: cloudflare/cloudflared:latest
+  image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
   replicas: 1
   # Application hostnames this project's connector serves, in addition to the
   # status- and offhours- hostnames which are always included. Rendered from the
@@ -62,13 +62,10 @@ keycloak:
     repository: quay.io/keycloak/keycloak
     tag: "26.5.5"
   theme:
-    image: ghcr.io/thegostsniperfr/keycloak-theme-kube-lab:latest
+    image: ghcr.io/thegostsniperfr/keycloak-theme-kube-lab:1.0.3@sha256:c31626bb1de27aea9339e6d8fab99d0d4b395c6165ee52f10698083e522dd37a
   configCli:
-    # Pinning to a specific tag failed live ("v6.5.1"/"6.5.1" both 404 on
-    # Docker Hub despite that being the version string the tool prints on
-    # boot) — using :latest, proven working in Batch I, until a real
-    # tag scheme is confirmed.
-    image: adorsys/keycloak-config-cli:latest
+    # Tag scheme is <config-cli version>-<keycloak version>; keep the suffix aligned with keycloak.image.tag.
+    image: adorsys/keycloak-config-cli:6.5.1-26.5.5@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274
     # keycloak-config-cli's own wait-for-Keycloak, so the PostSync Job doesn't
     # need a hand-rolled retry loop. Generous because the pod's own
     # startupProbe already allows up to 5 minutes.

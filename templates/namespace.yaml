@@ -6,5 +6,13 @@ metadata:
   labels:
     project: {{ .Values.projectName }}
     prod-gateway-access: "true"
+    {{- /*
+      Baseline is enforced: it blocks host access and privileged pods, which
+      would make the namespace a way onto the node. Restricted is only audited
+      and warned until the platform's own images and infra-templates comply.
+    */}}
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
     {{- include "cnp-project-base.labels" . | nindent 4 }}
 {{- end }}

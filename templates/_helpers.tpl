@@ -60,3 +60,24 @@ the browser and for Envoy's SecurityPolicy (R-3: never point either at a
 {{- define "cnp-project-base.keycloakIssuer" -}}
 https://auth-{{ .Values.projectName }}.{{ .Values.domain }}
 {{- end }}
+
+{{/*
+Pod Security Standard "restricted", which Kyverno audits in every project
+namespace. 65532 is the nonroot user the cloudflared and gatus-sidecar images
+already ship with.
+*/}}
+{{- define "cnp-project-base.restrictedPodSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: 65532
+runAsGroup: 65532
+fsGroup: 65532
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{- define "cnp-project-base.restrictedContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities:
+  drop: ["ALL"]
+{{- end }}

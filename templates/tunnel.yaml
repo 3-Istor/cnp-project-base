@@ -72,9 +72,13 @@ spec:
         # takes effect without a manual restart.
         cnp.3istor.com/tunnel-config: {{ .Values.tunnel.hostnames | toJson | sha256sum | trunc 16 }}
     spec:
+      securityContext:
+        {{- include "cnp-project-base.restrictedPodSecurityContext" . | nindent 8 }}
       containers:
         - name: cloudflared
           image: {{ .Values.tunnel.image }}
+          securityContext:
+            {{- include "cnp-project-base.restrictedContainerSecurityContext" . | nindent 12 }}
           args:
             - "tunnel"
             - "--no-autoupdate"

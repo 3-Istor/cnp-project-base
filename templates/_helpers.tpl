@@ -16,6 +16,15 @@ cnp.3istor.com/cloud: {{ .Values.targetCloud | quote }}
 {{- end }}
 
 {{/*
+Set on the namespace, so Alloy lets it override each app's own setting.
+*/}}
+{{- define "cnp-project-base.logRetentionLabel" -}}
+{{- with .Values.logRetention }}
+cnp.3istor.com/log-retention: {{ . | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
 Baseline is enforced: it blocks host access and privileged pods, which would
 make a project namespace a way onto the node. Restricted is only audited and
 warned until the platform's own images and infra-templates comply.

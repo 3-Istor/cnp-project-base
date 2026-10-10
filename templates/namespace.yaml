@@ -8,6 +8,7 @@ metadata:
     prod-gateway-access: "true"
     {{- include "cnp-project-base.podSecurityLabels" . | nindent 4 }}
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+    {{- include "cnp-project-base.logRetentionLabel" . | nindent 4 }}
 {{- /*
   App namespaces are owned here rather than created by each app's
   CreateNamespace=true: Argo CD never deletes a namespace it created that way,
@@ -24,5 +25,6 @@ metadata:
   labels:
     {{- include "cnp-project-base.podSecurityLabels" $ | nindent 4 }}
     {{- include "cnp-project-base.labels" $ | nindent 4 }}
+    {{- include "cnp-project-base.logRetentionLabel" $ | nindent 4 }}
 {{- end }}
 {{- end }}

@@ -5,6 +5,10 @@ projectName: "default"
 # decisions — Argo CD's destination does that.
 targetCloud: "onprem"
 
+# How long Loki keeps every log of this project: 7d, 14d or 30d. Empty lets
+# each app choose (default 14d); set, it overrides the apps.
+logRetention: ""
+
 domain: "3istor.com"
 
 features:

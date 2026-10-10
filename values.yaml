@@ -60,7 +60,7 @@ tunnel:
 offhours-guard:
   fullnameOverride: "offhours-guard"
   image:
-    tag: "1.1.7@sha256:e37e6f5b5bd61ab67a432143fe6c339d35b336e9608a5f6c9c64548a1220ed30"
+    tag: "1.1.8@sha256:195eb2757541c829fa0b75e15c3f153305e12d9c873a95568ebf9b997e2e8714"
     pullPolicy: IfNotPresent
 
 keycloak:

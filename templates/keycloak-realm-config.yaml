@@ -28,6 +28,11 @@ data:
       "sslRequired": "external",
       "registrationAllowed": false,
       "bruteForceProtected": false,
+      "eventsEnabled": true,
+      "eventsExpiration": 2592000,
+      "eventsListeners": ["jboss-logging"],
+      "adminEventsEnabled": true,
+      "adminEventsDetailsEnabled": false,
       "users": [
         {
           "username": "$(env:ADMIN_USERNAME)",

@@ -127,6 +127,10 @@ spec:
       kind: "ResourceQuota"
     - group: ""
       kind: "LimitRange"
+  {{- with .Values.syncWindows }}
+  syncWindows:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- /*
     No cluster-scoped kinds at all: app namespaces are created by the
     platform's chart, not by the apps (templates/namespace.yaml).

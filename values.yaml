@@ -36,11 +36,18 @@ features:
 # and own each app's namespace.
 apps: []
 
+# Argo CD sync windows of the project's apps AppProject, in AppProject
+# spec.syncWindows form (kind, schedule, duration, applications, ...).
+syncWindows: []
+
 gateway:
   # The cluster team owns the GatewayClass and the controller; CNP creates and
   # destroys the Gateway object at project level.
   className: eg
   numTrustedHops: 1
+  # Per-version request and error counters for progressive delivery. One
+  # series set per backend pod.
+  perEndpointStats: true
   # Where routes attach when features.gateway is false.
   shared:
     name: shared-gateway

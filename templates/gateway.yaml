@@ -21,6 +21,16 @@ spec:
   logging:
     level:
       default: warn
+  {{- if .Values.gateway.perEndpointStats }}
+  {{- /*
+    Envoy Gateway names its clusters per route rule, so a canary and its
+    stable share one cluster. Per-endpoint stats are what the canary analysis
+    (ClusterAnalysisTemplate cnp-error-rate) joins on pod IP to tell them apart.
+  */}}
+  telemetry:
+    metrics:
+      enablePerEndpointStats: true
+  {{- end }}
   provider:
     type: Kubernetes
     kubernetes:

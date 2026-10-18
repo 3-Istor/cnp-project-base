@@ -1,6 +1,6 @@
 # Gatus-sidecar for auto-discovery: https://github.com/home-operations/gatus-sidecar/tree/main
 
-{{- if and .Values.features.workloads .Values.features.gatus (eq .Values.targetCloud "onprem") }}
+{{- if and .Values.features.workloads .Values.features.gatus }}
 ---
 apiVersion: ricoberger.de/v1alpha1
 kind: VaultSecret
@@ -25,12 +25,22 @@ data:
       discord:
         webhook-url: "${DISCORD_WEBHOOK_URL}"
     endpoints:
+{{- if eq .Values.targetCloud "onprem" }}
       - name: OpenStack Control Plane
         group: Infrastructure Host
         url: "icmp://192.168.1.210"
         interval: 1m
         conditions:
           - "[CONNECTED] == true"
+{{- else }}
+      # Gatus refuses to start with zero endpoints; the sidecar adds its own asynchronously.
+      - name: Gatus
+        group: Monitoring
+        url: "http://localhost:8080/health"
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment

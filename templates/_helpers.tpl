@@ -1,4 +1,4 @@
-{{/* gatus, gateway, tunnel and keycloak need CRDs/operators that only exist on-prem for now (CNP-106 adds them on the clouds). */}}
+{{/* keycloak needs operators/CRDs that only exist on-prem. */}}
 {{/*
 The project's system namespace.
 */}}

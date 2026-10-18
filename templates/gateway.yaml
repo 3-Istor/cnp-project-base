@@ -1,4 +1,4 @@
-{{- if and .Values.features.workloads .Values.features.gateway }}
+{{- if and .Values.features.workloads .Values.features.gateway (eq .Values.targetCloud "onprem") }}
 {{- $ns := include "cnp-project-base.systemNamespace" . -}}
 {{- /*
   Envoy Gateway deploys the actual proxy (and its Service) into its own

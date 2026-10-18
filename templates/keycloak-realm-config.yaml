@@ -1,4 +1,4 @@
-{{- if and .Values.features.workloads .Values.features.keycloak }}
+{{- if and .Values.features.workloads .Values.features.keycloak (eq .Values.targetCloud "onprem") }}
 {{- $ns := include "cnp-project-base.systemNamespace" . -}}
 {{- /*
   Proven live in Batch I (see MULTICLOUD-ROLLOUT-LOG.md, entry I1): this realm

@@ -1,4 +1,5 @@
 {{- if and .Values.features.workloads .Values.features.networkIsolation }}
+{{- if eq .Values.targetCloud "onprem" }}
 {{- /*
   Ingress default deny for every namespace of the project (system and apps),
   as one cluster-wide policy so it covers app namespaces too. Egress stays
@@ -32,4 +33,42 @@ spec:
     - fromEntities:
         - host
         - remote-node
+{{- else }}
+{{- /*
+  Standard NetworkPolicy because the clouds have no Cilium CRDs; same sources as
+  the Cilium policy, and tenants cannot edit it (tenant AppProject blacklist).
+*/}}
+{{- $namespaces := list (include "cnp-project-base.systemNamespace" .) }}
+{{- range .Values.apps }}
+{{- $namespaces = append $namespaces (printf "%s-%s" $.Values.projectName .name) }}
+{{- end }}
+{{- range $namespaces }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cnp-project-ingress
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              cnp.3istor.com/project: {{ $.Values.projectName | quote }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+{{- end }}
+{{- end }}
 {{- end }}

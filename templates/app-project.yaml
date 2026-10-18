@@ -42,6 +42,13 @@ spec:
       rejected, found live: "namespace cnp-projects-db is not permitted in
       project '<name>'" (2026-09-18).
     */}}
+    {{- /* The clouds' NetworkPolicies are namespaced, one per app namespace. */}}
+    {{- if ne .Values.targetCloud "onprem" }}
+    {{- range .Values.apps }}
+    - namespace: "{{ $.Values.projectName }}-{{ .name }}"
+      name: {{ $.Values.targetCloud | quote }}
+    {{- end }}
+    {{- end }}
     {{- if .Values.features.keycloak }}
     - namespace: {{ .Values.keycloak.db.namespace | quote }}
       name: {{ .Values.targetCloud | quote }}

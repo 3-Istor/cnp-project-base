@@ -1,6 +1,6 @@
 # Gatus-sidecar for auto-discovery: https://github.com/home-operations/gatus-sidecar/tree/main
 
-{{- if and .Values.features.workloads .Values.features.gatus }}
+{{- if and .Values.features.workloads .Values.features.gatus (eq .Values.targetCloud "onprem") }}
 ---
 apiVersion: ricoberger.de/v1alpha1
 kind: VaultSecret

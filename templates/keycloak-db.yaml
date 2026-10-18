@@ -1,4 +1,4 @@
-{{- if and .Values.features.workloads .Values.features.keycloak }}
+{{- if and .Values.features.workloads .Values.features.keycloak (eq .Values.targetCloud "onprem") }}
 {{- $dbname := include "cnp-project-base.keycloakDbName" . -}}
 {{- /*
   The DatabaseRole's passwordSecret must live in the same namespace as the

@@ -6,6 +6,6 @@ dependencies:
   - name: offhours-guard
     version: "1.1.2"
     repository: "oci://ghcr.io/thegostsniperfr/charts"
-    # First path set wins: the bootstrap ApplicationSet sets offhours-guard.enabled (onprem only,
-    # its CRD is not on the clouds yet, CNP-106); otherwise features.workloads (false on the control plane).
+    # First path set wins: offhours-guard.enabled is an optional override; otherwise
+    # features.workloads (false on the control plane).
     condition: offhours-guard.enabled,features.workloads

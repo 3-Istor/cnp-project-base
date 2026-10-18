@@ -32,6 +32,14 @@ data:
         interval: 1m
         conditions:
           - "[CONNECTED] == true"
+{{- else }}
+      # Gatus refuses to start with zero endpoints; the sidecar adds its own asynchronously.
+      - name: Gatus
+        group: Monitoring
+        url: "http://localhost:8080/health"
+        interval: 1m
+        conditions:
+          - "[STATUS] == 200"
 {{- end }}
 ---
 apiVersion: apps/v1

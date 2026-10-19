@@ -44,8 +44,8 @@ spec:
     */}}
     {{- /* The clouds' NetworkPolicies are namespaced, one per app namespace. */}}
     {{- if ne .Values.targetCloud "onprem" }}
-    {{- range .Values.apps }}
-    - namespace: "{{ $.Values.projectName }}-{{ .name }}"
+    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+    - namespace: {{ . | quote }}
       name: {{ $.Values.targetCloud | quote }}
     {{- end }}
     {{- end }}
@@ -78,10 +78,10 @@ spec:
     - group: "rbac.authorization.k8s.io"
       kind: "ClusterRoleBinding"
       name: "offhours-guard-{{ $system }}-rolebinding"
-    {{- range .Values.apps }}
+    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
     - group: ""
       kind: "Namespace"
-      name: "{{ $.Values.projectName }}-{{ .name }}"
+      name: {{ . | quote }}
     {{- end }}
     - group: "cilium.io"
       kind: "CiliumClusterwideNetworkPolicy"
@@ -115,8 +115,8 @@ spec:
   */}}
   {{- if .Values.apps }}
   destinations:
-    {{- range .Values.apps }}
-    - namespace: "{{ $.Values.projectName }}-{{ .name }}"
+    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+    - namespace: {{ . | quote }}
       name: {{ $.Values.targetCloud | quote }}
     {{- end }}
   {{- else }}

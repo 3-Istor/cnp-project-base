@@ -26,6 +26,9 @@ spec:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: observability
+        {{- /* The CMP's smoke checks call an environment's Service directly, before any route. */}}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: arcl-cmp
         {{- /* The CNPG operator talks to each instance's manager. */}}
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: cnpg-system
@@ -39,9 +42,7 @@ spec:
   the Cilium policy, and tenants cannot edit it (tenant AppProject blacklist).
 */}}
 {{- $namespaces := list (include "cnp-project-base.systemNamespace" .) }}
-{{- range .Values.apps }}
-{{- $namespaces = append $namespaces (printf "%s-%s" $.Values.projectName .name) }}
-{{- end }}
+{{- $namespaces = concat $namespaces (include "cnp-project-base.appNamespaces" . | fromJsonArray) }}
 {{- range $namespaces }}
 ---
 apiVersion: networking.k8s.io/v1

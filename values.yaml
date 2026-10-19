@@ -31,9 +31,10 @@ features:
   # (templates/network-policy.yaml).
   networkIsolation: true
 
-# The registry record's spec.apps (name, repoURL). The AppProjects give each
-# app one destination namespace and one allowed source; the workloads render
-# and own each app's namespace.
+# The registry record's spec.apps (name, repoURL, environments). The AppProjects
+# give each app one destination namespace per environment and one allowed
+# source; the workloads render and own those namespaces. environments defaults
+# to [prod]; staging adds <project>-<app>-stg.
 apps: []
 
 # Argo CD sync windows of the project's apps AppProject, in AppProject

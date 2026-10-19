@@ -44,7 +44,7 @@ spec:
     */}}
     {{- /* The clouds' NetworkPolicies are namespaced, one per app namespace. */}}
     {{- if ne .Values.targetCloud "onprem" }}
-    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+    {{- range include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
     - namespace: {{ . | quote }}
       name: {{ $.Values.targetCloud | quote }}
     {{- end }}
@@ -78,7 +78,7 @@ spec:
     - group: "rbac.authorization.k8s.io"
       kind: "ClusterRoleBinding"
       name: "offhours-guard-{{ $system }}-rolebinding"
-    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+    {{- range include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
     - group: ""
       kind: "Namespace"
       name: {{ . | quote }}
@@ -115,7 +115,7 @@ spec:
   */}}
   {{- if .Values.apps }}
   destinations:
-    {{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+    {{- range include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
     - namespace: {{ . | quote }}
       name: {{ $.Values.targetCloud | quote }}
     {{- end }}

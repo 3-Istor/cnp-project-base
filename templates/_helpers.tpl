@@ -106,3 +106,19 @@ cnp-apps ApplicationSet and the registry validator.
 {{- end }}
 {{- $namespaces | toJson }}
 {{- end }}
+
+{{/*
+The app namespaces the AppProjects permit: both environments of every app,
+whether staging runs or not. Permissions must outlive the objects: turning
+staging off removes the namespace and its Applications in the same registry
+commit, and with the permission gone at the same time Argo CD could delete
+neither. The registry reserves these names, so no other project can take one.
+*/}}
+{{- define "cnp-project-base.permittedAppNamespaces" -}}
+{{- $namespaces := list }}
+{{- range .Values.apps }}
+{{- $namespaces = append $namespaces (printf "%s-%s" $.Values.projectName .name) }}
+{{- $namespaces = append $namespaces (printf "%s-%s-stg" $.Values.projectName .name) }}
+{{- end }}
+{{- $namespaces | toJson }}
+{{- end }}

@@ -91,3 +91,18 @@ readOnlyRootFilesystem: true
 capabilities:
   drop: ["ALL"]
 {{- end }}
+
+{{/*
+Every app namespace of the project, as a JSON list: <project>-<app> for prod,
+<project>-<app>-stg for an app that also runs staging. Same suffix as the
+cnp-apps ApplicationSet and the registry validator.
+*/}}
+{{- define "cnp-project-base.appNamespaces" -}}
+{{- $namespaces := list }}
+{{- range $app := .Values.apps }}
+{{- range ($app.environments | default (list "prod")) }}
+{{- $namespaces = append $namespaces (printf "%s-%s%s" $.Values.projectName $app.name (ternary "" "-stg" (eq . "prod"))) }}
+{{- end }}
+{{- end }}
+{{- $namespaces | toJson }}
+{{- end }}

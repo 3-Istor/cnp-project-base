@@ -4,7 +4,7 @@ description: Base Infrastructure for a CNP Project (ArgoCD AppProject, Gatus Mon
 version: 0.1.0
 dependencies:
   - name: offhours-guard
-    version: "1.1.2"
+    version: "1.1.4"
     repository: "oci://ghcr.io/thegostsniperfr/charts"
     # First path set wins: offhours-guard.enabled is an optional override; otherwise
     # features.workloads (false on the control plane).

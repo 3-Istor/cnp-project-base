@@ -9,6 +9,10 @@ targetCloud: "onprem"
 # each app choose (default 14d); set, it overrides the apps.
 logRetention: ""
 
+# Mirrors the registry record's spec.deletionProtection: labels the system and
+# prod namespaces and both AppProjects, which the admission policy then protects.
+deletionProtection: false
+
 domain: "3istor.com"
 
 features:

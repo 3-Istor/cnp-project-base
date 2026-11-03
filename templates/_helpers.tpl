@@ -17,6 +17,13 @@ cnp.3istor.com/cloud: {{ .Values.targetCloud | quote }}
 {{- end }}
 
 {{/*
+Only "true" protects. Put it on prod and system objects, never on -stg ones.
+*/}}
+{{- define "cnp-project-base.deletionProtectionLabel" -}}
+cnp.3istor.com/deletion-protected: {{ .Values.deletionProtection | default false | quote }}
+{{- end }}
+
+{{/*
 Set on the namespace, so Alloy lets it override each app's own setting.
 */}}
 {{- define "cnp-project-base.logRetentionLabel" -}}

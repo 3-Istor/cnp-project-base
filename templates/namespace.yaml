@@ -8,6 +8,7 @@ metadata:
     prod-gateway-access: "true"
     {{- include "cnp-project-base.podSecurityLabels" . | nindent 4 }}
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+    {{- include "cnp-project-base.deletionProtectionLabel" . | nindent 4 }}
     {{- include "cnp-project-base.logRetentionLabel" . | nindent 4 }}
 {{- /*
   App namespaces are owned here rather than created by each app's
@@ -16,22 +17,27 @@ metadata:
   everything Argo CD did not create in it (CNPG volumes), behind. Owned here,
   the namespace is pruned when the app leaves the record.
 */}}
-{{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+{{- range $app := .Values.apps }}
+{{- range $env := ($app.environments | default (list "prod")) }}
+{{- $ns := printf "%s-%s%s" $.Values.projectName $app.name (ternary "" "-stg" (eq $env "prod")) }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ . }}
+  name: {{ $ns }}
   labels:
     {{- include "cnp-project-base.podSecurityLabels" $ | nindent 4 }}
     {{- include "cnp-project-base.labels" $ | nindent 4 }}
+    {{- if eq $env "prod" }}
+    {{- include "cnp-project-base.deletionProtectionLabel" $ | nindent 4 }}
+    {{- end }}
     {{- include "cnp-project-base.logRetentionLabel" $ | nindent 4 }}
 ---
 apiVersion: v1
 kind: ResourceQuota
 metadata:
   name: cnp-project-quota
-  namespace: {{ . }}
+  namespace: {{ $ns }}
   labels:
     {{- include "cnp-project-base.labels" $ | nindent 4 }}
 spec:
@@ -45,7 +51,7 @@ apiVersion: v1
 kind: LimitRange
 metadata:
   name: cnp-project-defaults
-  namespace: {{ . }}
+  namespace: {{ $ns }}
   labels:
     {{- include "cnp-project-base.labels" $ | nindent 4 }}
 spec:
@@ -54,5 +60,6 @@ spec:
       defaultRequest:
         cpu: 50m
         memory: 128Mi
+{{- end }}
 {{- end }}
 {{- end }}

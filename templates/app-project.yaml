@@ -24,6 +24,7 @@ metadata:
   namespace: argocd
   labels:
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+    {{- include "cnp-project-base.deletionProtectionLabel" . | nindent 4 }}
 spec:
   description: "Platform-owned base of project {{ .Values.projectName }}"
   sourceRepos:
@@ -100,6 +101,7 @@ metadata:
   namespace: argocd
   labels:
     {{- include "cnp-project-base.labels" . | nindent 4 }}
+    {{- include "cnp-project-base.deletionProtectionLabel" . | nindent 4 }}
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
   sourceRepos:

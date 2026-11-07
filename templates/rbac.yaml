@@ -4,7 +4,7 @@
   so the clouds get nothing until their clusters do. The prefix is the API
   server's oidc-groups-prefix (K3s/node-config/k3s-server/config.yaml).
 
-  Admins only view the system namespace: edit there would let them run a pod as
+  Admins only view the system namespace: write access there would let them run a pod as
   offhours-guard, whose ClusterRole patches every Deployment in the cluster.
 */}}
 {{- $system := include "cnp-project-base.systemNamespace" . }}
@@ -45,18 +45,60 @@ subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
     name: {{ $members | quote }}
+{{- /*
+  Not the built-in edit: it also grants NetworkPolicies, ServiceAccounts and
+  whatever CRDs aggregate into it, which would let admins widen the project's
+  ingress or reach around the tenant AppProject's blacklist with kubectl.
+*/}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: project-{{ $.Values.projectName }}-operator
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list", "watch"]
+  {{- /* kubectl exec and port-forward open the stream with GET over websockets since 1.30. */}}
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/portforward"]
+    verbs: ["get", "create"]
+  - apiGroups: [""]
+    resources: ["events", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets", "daemonsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale", "replicasets/scale"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: project-{{ $.Values.projectName }}-edit
+  name: project-{{ $.Values.projectName }}-operator
   namespace: {{ . }}
   labels:
     {{- include "cnp-project-base.labels" $ | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+  kind: Role
+  name: project-{{ $.Values.projectName }}-operator
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group

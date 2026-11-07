@@ -34,9 +34,9 @@ features:
   # Ingress default deny across the project's namespaces
   # (templates/network-policy.yaml).
   networkIsolation: true
-  # kubectl over OIDC: members view, admins edit, in the project's namespaces
-  # (templates/rbac.yaml). On-prem only, the clouds' API servers don't trust
-  # Keycloak.
+  # kubectl over OIDC: members view, admins operate workloads, in the
+  # project's namespaces (templates/rbac.yaml). On-prem only, the clouds' API
+  # servers don't trust Keycloak.
   projectRbac: true
 
 # The registry record's spec.apps (name, repoURL, environments). The AppProjects

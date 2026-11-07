@@ -1,0 +1,65 @@
+{{- if and .Values.features.workloads .Values.features.projectRbac (eq .Values.targetCloud "onprem") }}
+{{- /*
+  kubectl access over OIDC: only the K3s API server trusts the Keycloak issuer,
+  so the clouds get nothing until their clusters do. The prefix is the API
+  server's oidc-groups-prefix (K3s/node-config/k3s-server/config.yaml).
+
+  Admins only view the system namespace: edit there would let them run a pod as
+  offhours-guard, whose ClusterRole patches every Deployment in the cluster.
+*/}}
+{{- $system := include "cnp-project-base.systemNamespace" . }}
+{{- $members := printf "oidc:project-%s-members" .Values.projectName }}
+{{- $admins := printf "oidc:project-%s-admins" .Values.projectName }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: project-{{ .Values.projectName }}-view
+  namespace: {{ $system }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ $members | quote }}
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ $admins | quote }}
+{{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: project-{{ $.Values.projectName }}-view
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ $members | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: project-{{ $.Values.projectName }}-edit
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: {{ $admins | quote }}
+{{- end }}
+{{- end }}

@@ -104,10 +104,23 @@ metadata:
     {{- include "cnp-project-base.deletionProtectionLabel" . | nindent 4 }}
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
+  {{- /*
+    Imported apps (service, backing) take their values from cnp-projects (D1):
+    their source repo is never a source, Argo CD never reads it.
+  */}}
+  {{- $imported := list "service" "backing" }}
   sourceRepos:
     - https://github.com/3-Istor/infra-templates.git
     {{- range .Values.apps }}
+    {{- if and .repoURL (not (has .type $imported)) }}
     - {{ .repoURL | quote }}
+    {{- end }}
+    {{- end }}
+    {{- range .Values.apps }}
+    {{- if has .type $imported }}
+    - https://github.com/3-Istor/cnp-projects.git
+    {{- break }}
+    {{- end }}
     {{- end }}
   {{- /*
     One destination per registered app, never "<name>-*": that glob also

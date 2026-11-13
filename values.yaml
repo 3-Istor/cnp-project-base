@@ -39,10 +39,11 @@ features:
   # servers don't trust Keycloak.
   projectRbac: true
 
-# The registry record's spec.apps (name, repoURL, environments). The AppProjects
-# give each app one destination namespace per environment and one allowed
-# source; the workloads render and own those namespaces. environments defaults
-# to [prod]; staging adds <project>-<app>-stg.
+# The registry record's spec.apps (name, type, repoURL, environments). The
+# AppProjects give each app one destination namespace per environment and one
+# allowed source: its repoURL, or cnp-projects for imported apps (type service
+# or backing). The workloads render and own those namespaces. environments
+# defaults to [prod]; staging adds <project>-<app>-stg.
 apps: []
 
 # Argo CD sync windows of the project's apps AppProject, in AppProject

@@ -1,0 +1,68 @@
+{{- if and .Values.features.workloads (eq .Values.targetCloud "onprem") }}
+{{- /*
+  Project export (EU Data Act, B1): what the CMP reads in the project's own
+  namespaces, and the database dump Job it runs there. Namespaced, so the CMP
+  gets nothing in namespaces that are not a project's. The Job runs in the
+  database's image with the password from the namespace's own Secret; the
+  Secret the CMP creates only holds two presigned upload URLs. No pods/exec,
+  no pods/log. On-prem only: the CMP's ServiceAccount lives there, and on the
+  clouds it acts with the Argo CD cluster credentials.
+*/}}
+{{- $system := include "cnp-project-base.systemNamespace" . }}
+{{- $namespaces := list $system }}
+{{- $namespaces = concat $namespaces (include "cnp-project-base.appNamespaces" . | fromJsonArray) }}
+{{- range $namespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cmp-project-exporter
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "persistentvolumeclaims", "serviceaccounts", "pods"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources: ["securitypolicies"]
+    verbs: ["get", "list"]
+  - apiGroups: ["objectbucket.io"]
+    resources: ["objectbucketclaims"]
+    verbs: ["get", "list"]
+  {{- /* Databases live in app namespaces only: no Job, no Secret in the system one. */}}
+  {{- if ne . $system }}
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "deletecollection"]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cmp-project-exporter
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cmp-project-exporter
+subjects:
+  - kind: ServiceAccount
+    name: arcl-cmp
+    namespace: arcl-cmp
+{{- end }}
+{{- end }}

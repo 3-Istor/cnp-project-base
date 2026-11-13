@@ -16,6 +16,12 @@ metadata:
   so removing an app from the registry used to leave its namespace, and
   everything Argo CD did not create in it (CNPG volumes), behind. Owned here,
   the namespace is pruned when the app leaves the record.
+
+  Except for imported apps (service, backing): a backing app's data lives in
+  a PVC that only the namespace deletion removes, and a bad registry write
+  must not be enough to lose it. Argo CD leaves their namespace out of the
+  prune; the CMP deletes it once the user confirms. Deleting the whole
+  project still removes it with the bootstrap Application.
 */}}
 {{- range $app := .Values.apps }}
 {{- range $env := ($app.environments | default (list "prod")) }}
@@ -25,6 +31,10 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ $ns }}
+  {{- if has ($app.type | default "") (list "service" "backing") }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+  {{- end }}
   labels:
     {{- include "cnp-project-base.podSecurityLabels" $ | nindent 4 }}
     {{- include "cnp-project-base.labels" $ | nindent 4 }}

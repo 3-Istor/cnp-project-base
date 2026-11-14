@@ -58,6 +58,14 @@ gateway:
   # Per-version request and error counters for progressive delivery. One
   # series set per backend pod.
   perEndpointStats: true
+  # The project's Envoy proxy. Limit equal to request (Kyverno
+  # require-resources-and-memory-limits).
+  resources:
+    requests:
+      cpu: 25m
+      memory: 192Mi
+    limits:
+      memory: 192Mi
   # Where routes attach when features.gateway is false.
   shared:
     name: shared-gateway

@@ -71,13 +71,14 @@ spec:
           env:
             - name: GATUS_CONFIG_PATH
               value: "/config" 
+          {{- /* Gatus idles under 1m and 40Mi with a project's handful of endpoints. */}}
           resources:
             requests:
-              cpu: "50m"
-              memory: "128Mi"
+              cpu: "10m"
+              memory: "64Mi"
             limits:
               cpu: "200m"
-              memory: "128Mi"
+              memory: "64Mi"
           envFrom:
             - secretRef:
                 name: gatus-secrets
@@ -103,11 +104,11 @@ spec:
             - "/config/gatus-sidecar.yaml"
           resources:
             requests:
-              cpu: "10m"
-              memory: "128Mi"
+              cpu: "5m"
+              memory: "64Mi"
             limits:
               cpu: "100m"
-              memory: "128Mi"
+              memory: "64Mi"
           volumeMounts:
             - name: config-volume
               mountPath: /config

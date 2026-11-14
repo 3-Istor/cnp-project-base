@@ -88,6 +88,14 @@ tunnel:
 
 offhours-guard:
   fullnameOverride: "offhours-guard"
+  # The chart's 32Mi limit sits at the guard's 31Mi peak; it uses ~1m CPU.
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "48Mi"
+    limits:
+      cpu: "100m"
+      memory: "48Mi"
   image:
     tag: "1.1.10@sha256:6b669a16157a815675176f638d0e03366dc2a75cc48bc1598c0ca2a10f5aa1ad"
     pullPolicy: IfNotPresent

@@ -34,6 +34,14 @@ spec:
   provider:
     type: Kubernetes
     kubernetes:
+      {{- /*
+        Envoy Gateway's default reserves 512Mi per proxy; a project proxy uses
+        20-50Mi, and eight of them took 4Gi of a cluster that has 28Gi.
+      */}}
+      envoyDeployment:
+        container:
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
       envoyService:
         name: {{ .Values.projectName }}-envoy
         type: ClusterIP

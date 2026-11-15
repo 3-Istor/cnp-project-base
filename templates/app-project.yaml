@@ -147,6 +147,18 @@ spec:
       kind: "ResourceQuota"
     - group: ""
       kind: "LimitRange"
+    {{- /*
+      Observability objects are read cluster-wide by the platform's collectors
+      and operator: a tenant's PodMonitor can forge another namespace's labels,
+      a VMUser or VMRule can read every project, a scrape config can reach any
+      address from the collector. The platform generates what apps need.
+    */}}
+    - group: "monitoring.coreos.com"
+      kind: "*"
+    - group: "operator.victoriametrics.com"
+      kind: "*"
+    - group: "opentelemetry.io"
+      kind: "*"
   {{- with .Values.syncWindows }}
   syncWindows:
     {{- toYaml . | nindent 4 }}

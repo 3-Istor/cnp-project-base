@@ -1,0 +1,30 @@
+{{- if and .Values.features.appProject (ne .Values.targetCloud "onprem") }}
+{{- /* Rook only runs on-prem: claim each cloud database's backup bucket here, whatever cluster the app runs on. */}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.projectName }}-backups
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+{{- range .Values.apps }}
+{{- if eq .type "fullstack" }}
+{{- $app := . }}
+{{- range (.environments | default (list "prod")) }}
+{{- $staging := ne . "prod" }}
+{{- $release := printf "%s-%s-backend%s" $.Values.projectName $app.name (ternary "-stg" "" $staging) }}
+{{- $db := include "cnp-project-base.dbBaseName" (dict "release" $release "staging" $staging) }}
+---
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ $db }}-backup
+  namespace: {{ $.Values.projectName }}-backups
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  bucketName: cnpg-{{ $db }}
+  storageClassName: ceph-bucket
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

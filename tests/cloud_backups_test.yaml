@@ -1,0 +1,78 @@
+suite: cloud backups
+templates:
+  - templates/cloud-backups.yaml
+set:
+  projectName: shop
+  targetCloud: aws
+  features.appProject: true
+  features.workloads: false
+tests:
+  - it: onprem project renders nothing
+    set:
+      targetCloud: onprem
+      apps: [{name: api, type: fullstack}]
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: fullstack app gets a claim
+    set:
+      apps: [{name: api, type: fullstack}]
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentSelector: {path: kind, value: Namespace}
+        equal: {path: metadata.name, value: shop-backups}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: metadata.name, value: shop-api-backend-db-backup}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: metadata.namespace, value: shop-backups}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: spec.bucketName, value: cnpg-shop-api-backend-db}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: spec.storageClassName, value: ceph-bucket}
+  - it: static and service apps get none
+    set:
+      apps: [{name: web, type: static}, {name: cache, type: service}]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Namespace
+  - it: staging environment gets its own claim
+    set:
+      apps: [{name: api, type: fullstack, environments: [prod, staging]}]
+    asserts:
+      - hasDocuments:
+          count: 3
+      - documentIndex: 2
+        equal: {path: metadata.name, value: shop-api-backend-stg-db-backup}
+      - documentIndex: 2
+        equal: {path: spec.bucketName, value: cnpg-shop-api-backend-stg-db}
+  - it: long release name is truncated like the app chart
+    set:
+      projectName: long-project-name
+      apps: [{name: an-application-name-xyz, type: fullstack, environments: [prod, staging]}]
+    asserts:
+      - documentIndex: 1
+        equal: {path: metadata.name, value: long-project-name-an-application-name-xyz-backe-db-backup}
+      - documentIndex: 1
+        equal: {path: spec.bucketName, value: cnpg-long-project-name-an-application-name-xyz-backe-db}
+      - documentIndex: 2
+        equal: {path: metadata.name, value: long-project-name-an-application-name-xyz-b-stg-db-backup}
+      - documentIndex: 2
+        equal: {path: spec.bucketName, value: cnpg-long-project-name-an-application-name-xyz-b-stg-db}
+  - it: gcp renders the same claims as aws
+    set:
+      targetCloud: gcp
+      apps: [{name: api, type: fullstack}]
+    asserts:
+      - documentIndex: 1
+        equal: {path: spec.bucketName, value: cnpg-shop-api-backend-db}
+  - it: workloads render has no backups
+    set:
+      features.appProject: false
+      features.workloads: true
+      apps: [{name: api, type: fullstack}]
+    asserts:
+      - hasDocuments:
+          count: 0

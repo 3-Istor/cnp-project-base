@@ -129,3 +129,15 @@ neither. The registry reserves these names, so no other project can take one.
 {{- end }}
 {{- $namespaces | toJson }}
 {{- end }}
+
+{{/*
+Mirrors infra-templates' dbBaseName helper: the app chart names its bucket from
+the same release, so the two must truncate identically. Args: release, staging.
+*/}}
+{{- define "cnp-project-base.dbBaseName" -}}
+{{- if .staging -}}
+{{- printf "%s-stg" (.release | trimSuffix "-stg" | trunc 43 | trimSuffix "-") | trunc 47 | trimSuffix "-" }}-db
+{{- else -}}
+{{- .release | trunc 47 | trimSuffix "-" }}-db
+{{- end }}
+{{- end }}

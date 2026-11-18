@@ -1,0 +1,100 @@
+{{- if and .Values.features.workloads .Values.features.egressIsolation (eq .Values.targetCloud "onprem") }}
+{{- /*
+  Default egress for the project's app namespaces (not <project>-system, whose
+  Gatus and offhours-guard must reach the API and every app). Cilium turns
+  egress to default deny for a pod as soon as one egress rule selects it, so
+  everything below is the whole list of what an app pod may reach. CIDR rules
+  only match addresses outside the cluster: pods, nodes and the API server are
+  reached through the endpoint rules or not at all.
+*/}}
+{{- range include "cnp-project-base.appNamespaces" . | fromJsonArray }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cnp-project-egress
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    {{- /* Every namespace of the project; infra-templates network.allowFrom narrows the receiving side. */}}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.cilium.k8s.namespace.labels.cnp.3istor.com/project: {{ $.Values.projectName | quote }}
+    {{- /* OTLP to the collector (infra-templates tracing). */}}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+      toPorts:
+        - ports:
+            - port: "4317"
+              protocol: TCP
+            - port: "4318"
+              protocol: TCP
+    {{- /* Public Internet, Keycloak's public OIDC endpoints included (auth.<domain> resolves to Cloudflare). */}}
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            {{- toYaml $.Values.egress.deniedCIDRs | nindent 12 }}
+        - cidr: ::/0
+          except:
+            {{- toYaml $.Values.egress.deniedCIDRsV6 | nindent 12 }}
+---
+{{- /*
+  The RGW sits in the lab network. Only pods that hold a bucket or ship CNPG
+  backups carry the label (infra-templates sets it from bucket.enabled and
+  db.backup.enabled).
+*/}}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cnp-project-egress-rgw
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  endpointSelector:
+    matchLabels:
+      cnp.3istor.com/egress-rgw: "true"
+  egress:
+    - toCIDR:
+        - {{ $.Values.egress.rgw.cidr }}
+      toPorts:
+        - ports:
+            - port: {{ $.Values.egress.rgw.port | quote }}
+              protocol: TCP
+---
+{{- /*
+  CNPG instance and pooler pods run CNPG's instance manager, which watches its
+  Cluster through the API server and reports to the operator.
+*/}}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cnp-project-egress-cnpg
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/podRole
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
+{{- end }}
+{{- end }}

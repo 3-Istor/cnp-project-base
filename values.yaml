@@ -34,6 +34,11 @@ features:
   # Ingress default deny across the project's namespaces
   # (templates/network-policy.yaml).
   networkIsolation: true
+  # Egress default deny for the app namespaces (templates/network-egress.yaml):
+  # DNS, the project, the OTLP collector and the public Internet only. Off by
+  # default: each project runs a week with Cilium policy audit mode and Hubble
+  # first, then turns it on.
+  egressIsolation: false
   # kubectl over OIDC: members view, admins operate workloads, in the
   # project's namespaces (templates/rbac.yaml). On-prem only, the clouds' API
   # servers don't trust Keycloak.
@@ -70,6 +75,31 @@ gateway:
   shared:
     name: shared-gateway
     namespace: gateway-infra
+
+egress:
+  # Never reachable from an app pod, whatever the public-Internet rule allows:
+  # the lab and OpenStack networks (192.168.0.0/16, project network
+  # 172.16.0.0/24, WireGuard 10.0.0.0/24), the cloud metadata service and the
+  # other private and reserved ranges.
+  deniedCIDRs:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 100.64.0.0/10
+    - 169.254.0.0/16
+    - 127.0.0.0/8
+    - 0.0.0.0/8
+    - 224.0.0.0/4
+    - 240.0.0.0/4
+  deniedCIDRsV6:
+    - fc00::/7
+    - fe80::/10
+    - ::1/128
+  # The OpenStack Ceph RGW (K3s rook-ceph object-store.yaml), for pods
+  # labelled cnp.3istor.com/egress-rgw=true.
+  rgw:
+    cidr: 192.168.1.110/32
+    port: 7480
 
 tunnel:
   image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07

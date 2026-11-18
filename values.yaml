@@ -123,6 +123,10 @@ tunnel:
 
 offhours-guard:
   fullnameOverride: "offhours-guard"
+  # Same realm as templates/offhours-config.yaml's SecurityPolicy; the guard
+  # replaces {project} with its own project.
+  auth:
+    issuer: "https://auth.3istor.com/realms/{project}"
   # The chart's 32Mi limit sits at the guard's 31Mi peak; it uses ~1m CPU.
   resources:
     requests:

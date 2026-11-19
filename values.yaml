@@ -91,6 +91,11 @@ egress:
     - 0.0.0.0/8
     - 224.0.0.0/4
     - 240.0.0.0/4
+    # The lab's public IP (K3s terraform dc_ip, also 3istor.com and
+    # vpn.3istor.com). Its ~20 port forwards lead back into the lab, and the
+    # box rewrites the source to its own LAN address, so a pod would reach
+    # SSH and admin services as a trusted local client. Update with dc_ip.
+    - 176.132.254.63/32
   deniedCIDRsV6:
     - fc00::/7
     - fe80::/10

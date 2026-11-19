@@ -81,6 +81,7 @@ check "$plain_pod" blocked "https://192.168.1.212:6443/version"
 check "$plain_pod" blocked "http://vault.vault.svc.cluster.local:8200/v1/sys/health"
 check "$plain_pod" blocked "http://keycloakx-http.keycloak.svc.cluster.local/"
 check "$plain_pod" blocked "http://169.254.169.254/"
+check "$plain_pod" blocked "https://176.132.254.63/"
 
 check "$rgw_pod" reachable "http://192.168.1.110:7480"
 check "$rgw_pod" blocked "http://192.168.1.110:5000/v3"

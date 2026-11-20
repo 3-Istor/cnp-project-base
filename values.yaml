@@ -136,7 +136,7 @@ offhours-guard:
       cpu: "100m"
       memory: "48Mi"
   image:
-    tag: "1.2.0@sha256:7419e2bd34da8608949dfcb44f5972df714e35a97383015cfbbafadadf0aed4d"
+    tag: "1.3.0@sha256:f998ae0cfae22f06a8bafd1dfdd369f33b5a86f0de44d5c45cafcf7adfbbe3db"
     pullPolicy: IfNotPresent
 
 keycloak:

@@ -143,8 +143,15 @@ spec:
     - group: "*"
       kind: "*"
   namespaceResourceBlacklist:
+    {{- /*
+      CiliumNetworkPolicy stays allowed: the chart renders <app>-allow-from
+      (CNP-297), an ingressDeny that only narrows callers, from values that
+      cannot carry any other rule.
+    */}}
     - group: "cilium.io"
-      kind: "*"
+      kind: "CiliumEndpoint"
+    - group: "cilium.io"
+      kind: "CiliumNodeConfig"
     - group: "networking.k8s.io"
       kind: "NetworkPolicy"
     - group: ""

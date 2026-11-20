@@ -96,5 +96,29 @@ spec:
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: cnpg-system
+---
+{{- /*
+  The Jobs CNPG runs before an instance exists (initdb, join, snapshot
+  recovery) carry cnpg.io/jobRole, not cnpg.io/podRole, and wait on the
+  API server too.
+*/}}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cnp-project-egress-cnpg-jobs
+  namespace: {{ . }}
+  labels:
+    {{- include "cnp-project-base.labels" $ | nindent 4 }}
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/jobRole
+        operator: Exists
+  egress:
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
 {{- end }}
 {{- end }}

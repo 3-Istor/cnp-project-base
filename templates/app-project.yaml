@@ -108,7 +108,8 @@ spec:
     Imported apps (service, backing) take their values from cnp-projects (D1)
     until their standard pull request is merged (CNP-303): the CMP then sets
     their repoURL and Argo CD reads deploy/values-<app>.yaml there, like a
-    template app's. An imported app has one source of values, never both.
+    template app's. Their release still lives in cnp-projects
+    (apps/<project>/<app>/release.yaml), so every imported app needs it.
   */}}
   {{- $imported := list "service" "backing" }}
   {{- $repos := list }}
@@ -121,7 +122,7 @@ spec:
     {{- end }}
     {{- end }}
     {{- range .Values.apps }}
-    {{- if and (has .type $imported) (not .repoURL) }}
+    {{- if has .type $imported }}
     - https://github.com/3-Istor/cnp-projects.git
     {{- break }}
     {{- end }}

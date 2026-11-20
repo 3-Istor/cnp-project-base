@@ -24,7 +24,7 @@ tests:
   - it: covers every app namespace and environment, not the system one
     asserts:
       - hasDocuments:
-          count: 6
+          count: 8
       - matchRegex:
           path: metadata.namespace
           pattern: ^shop-api(-stg)?$
@@ -83,6 +83,18 @@ tests:
           path: spec.endpointSelector.matchExpressions
           value:
             - key: cnpg.io/podRole
+              operator: Exists
+      - equal:
+          path: spec.egress[0].toEntities
+          value: [kube-apiserver]
+
+  - it: opens the API server to the CNPG bootstrap jobs too
+    documentIndex: 3
+    asserts:
+      - equal:
+          path: spec.endpointSelector.matchExpressions
+          value:
+            - key: cnpg.io/jobRole
               operator: Exists
       - equal:
           path: spec.egress[0].toEntities

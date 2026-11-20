@@ -105,19 +105,23 @@ metadata:
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
   {{- /*
-    Imported apps (service, backing) take their values from cnp-projects (D1):
-    their source repo is never a source, Argo CD never reads it.
+    Imported apps (service, backing) take their values from cnp-projects (D1)
+    until their standard pull request is merged (CNP-303): the CMP then sets
+    their repoURL and Argo CD reads deploy/values-<app>.yaml there, like a
+    template app's. An imported app has one source of values, never both.
   */}}
   {{- $imported := list "service" "backing" }}
+  {{- $repos := list }}
   sourceRepos:
     - https://github.com/3-Istor/infra-templates.git
     {{- range .Values.apps }}
-    {{- if and .repoURL (not (has .type $imported)) }}
+    {{- if and .repoURL (not (has .repoURL $repos)) }}
+    {{- $repos = append $repos .repoURL }}
     - {{ .repoURL | quote }}
     {{- end }}
     {{- end }}
     {{- range .Values.apps }}
-    {{- if has .type $imported }}
+    {{- if and (has .type $imported) (not .repoURL) }}
     - https://github.com/3-Istor/cnp-projects.git
     {{- break }}
     {{- end }}

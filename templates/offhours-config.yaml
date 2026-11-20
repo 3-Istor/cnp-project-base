@@ -1,16 +1,88 @@
 {{- if and .Values.features.workloads .Values.features.gatus }}
+{{- $ns := include "cnp-project-base.systemNamespace" . -}}
+{{- $host := printf "offhours-%s.%s" .Values.projectName .Values.domain -}}
+{{- $issuer := printf "https://auth.%s/realms/%s" .Values.domain .Values.projectName -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: offhours-route
-  namespace: {{ .Values.projectName }}-system
+  namespace: {{ $ns }}
 spec:
   parentRefs:
     {{- include "cnp-project-base.gatewayRef" . | nindent 4 }}
   hostnames:
-    - "offhours-{{ .Values.projectName }}.3istor.com"
+    - {{ $host | quote }}
   rules:
     - backendRefs:
-        - name: offhours-guard 
+        - name: offhours-guard
           port: 8082
+---
+{{- /*
+  The client is created by project-bootstrap in the project's tenant realm
+  (client offhours-guard) and its secret written to Vault, never to etcd (D-02).
+*/}}
+apiVersion: ricoberger.de/v1alpha1
+kind: VaultSecret
+metadata:
+  name: offhours-oidc
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  path: project-{{ .Values.projectName }}/system/offhours-oidc
+  vaultRole: project-{{ .Values.projectName }}-system-role
+  type: Opaque
+  keys:
+    - client-secret
+---
+{{- /*
+  Sleep and wake stop any app of the project: login alone is not enough, the
+  tenant realm's project groups are required. offhours-guard checks the same
+  token again, because Gatus reaches the pod in-cluster without the Gateway.
+*/}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: offhours-security
+  namespace: {{ $ns }}
+  labels:
+    {{- include "cnp-project-base.labels" . | nindent 4 }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: offhours-route
+  oidc:
+    provider:
+      issuer: {{ $issuer | quote }}
+      authorizationEndpoint: "{{ $issuer }}/protocol/openid-connect/auth"
+      tokenEndpoint: "{{ $issuer }}/protocol/openid-connect/token"
+      endSessionEndpoint: "{{ $issuer }}/protocol/openid-connect/logout"
+    clientID: offhours-guard
+    clientSecret:
+      name: offhours-oidc
+    redirectURL: "https://{{ $host }}/oauth2/callback"
+    logoutPath: /logout
+    {{- /* Cookies are encrypted: the Bearer header is how jwt_authn and offhours-guard read the groups. */}}
+    forwardAccessToken: true
+  jwt:
+    providers:
+      - name: keycloak
+        issuer: {{ $issuer | quote }}
+        remoteJWKS:
+          uri: "{{ $issuer }}/protocol/openid-connect/certs"
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: project-members
+        action: Allow
+        principal:
+          jwt:
+            provider: keycloak
+            claims:
+              - name: groups
+                valueType: StringArray
+                values: [project-members, project-admins]
 {{- end }}

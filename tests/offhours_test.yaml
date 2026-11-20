@@ -1,0 +1,40 @@
+suite: offhours exposure
+templates:
+  - templates/offhours-config.yaml
+set:
+  projectName: shop
+tests:
+  - it: puts the dashboard behind the tenant realm login
+    asserts:
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal: {path: spec.oidc.provider.issuer, value: https://auth.3istor.com/realms/shop}
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal: {path: spec.oidc.redirectURL, value: https://offhours-shop.3istor.com/oauth2/callback}
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal:
+          path: spec.targetRefs
+          value: [{group: gateway.networking.k8s.io, kind: HTTPRoute, name: offhours-route}]
+  - it: denies logged-in users outside the project groups
+    asserts:
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal: {path: spec.authorization.defaultAction, value: Deny}
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal:
+          path: spec.authorization.rules[0].principal.jwt.claims[0].values
+          value: [project-members, project-admins]
+  - it: forwards the token so offhours-guard can check it again
+    asserts:
+      - documentSelector: {path: kind, value: SecurityPolicy}
+        equal: {path: spec.oidc.forwardAccessToken, value: true}
+  - it: reads the client secret from the project system path in Vault
+    asserts:
+      - documentSelector: {path: kind, value: VaultSecret}
+        equal: {path: spec.path, value: project-shop/system/offhours-oidc}
+      - documentSelector: {path: kind, value: VaultSecret}
+        equal: {path: spec.vaultRole, value: project-shop-system-role}
+  - it: renders nothing without gatus
+    set:
+      features.gatus: false
+    asserts:
+      - hasDocuments:
+          count: 0

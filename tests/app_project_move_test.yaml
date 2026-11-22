@@ -1,0 +1,35 @@
+suite: app project move target
+templates:
+  - templates/app-project.yaml
+set:
+  projectName: shop
+  targetCloud: aws
+  features.appProject: true
+  apps: [{name: api, type: fullstack}]
+tests:
+  - it: no move target keeps aws only
+    set:
+      moveTarget: ""
+    asserts:
+      - documentSelector: {path: metadata.name, value: shop-platform}
+        notContains: {path: spec.destinations, content: {name: gcp, namespace: shop-system}}
+      - documentSelector: {path: metadata.name, value: shop}
+        notContains: {path: spec.destinations, content: {name: gcp, namespace: shop-api}}
+  - it: move target gets a twin of every destination
+    set:
+      moveTarget: gcp
+    asserts:
+      - documentSelector: {path: metadata.name, value: shop-platform}
+        contains: {path: spec.destinations, content: {name: gcp, namespace: shop-system}}
+      - documentSelector: {path: metadata.name, value: shop-platform}
+        contains: {path: spec.destinations, content: {name: aws, namespace: shop-system}}
+      - documentSelector: {path: metadata.name, value: shop}
+        contains: {path: spec.destinations, content: {name: gcp, namespace: shop-api}}
+      - documentSelector: {path: metadata.name, value: shop}
+        contains: {path: spec.destinations, content: {name: aws, namespace: shop-api}}
+  - it: same move target adds no duplicate
+    set:
+      moveTarget: aws
+    asserts:
+      - documentSelector: {path: metadata.name, value: shop}
+        lengthEqual: {path: spec.destinations, count: 2}

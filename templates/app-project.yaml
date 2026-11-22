@@ -34,8 +34,10 @@ spec:
       Restricted to this project's cluster, addressed by name. A mis-generated
       Application cannot land on the wrong cloud (D-03) — Argo CD rejects it.
     */}}
-    - namespace: {{ include "cnp-project-base.systemNamespace" . | quote }}
-      name: {{ .Values.targetCloud | quote }}
+    {{- range $cloud := compact (list .Values.targetCloud .Values.moveTarget) | uniq }}
+    - namespace: {{ include "cnp-project-base.systemNamespace" $ | quote }}
+      name: {{ $cloud | quote }}
+    {{- end }}
     {{- /*
       Dedicated Keycloak's database lives in the shared cnp-projects-db
       namespace on this same cluster, not in the system namespace (WS-5) — the
@@ -44,13 +46,17 @@ spec:
       project '<name>'" (2026-09-18).
     */}}
     {{- /* App namespaces hold the quota and limit range, and on the clouds the NetworkPolicy. */}}
-    {{- range include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
-    - namespace: {{ . | quote }}
-      name: {{ $.Values.targetCloud | quote }}
+    {{- range $ns := include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
+    {{- range $cloud := compact (list $.Values.targetCloud $.Values.moveTarget) | uniq }}
+    - namespace: {{ $ns | quote }}
+      name: {{ $cloud | quote }}
+    {{- end }}
     {{- end }}
     {{- if .Values.features.keycloak }}
-    - namespace: {{ .Values.keycloak.db.namespace | quote }}
-      name: {{ .Values.targetCloud | quote }}
+    {{- range $cloud := compact (list .Values.targetCloud .Values.moveTarget) | uniq }}
+    - namespace: {{ $.Values.keycloak.db.namespace | quote }}
+      name: {{ $cloud | quote }}
+    {{- end }}
     {{- end }}
   namespaceResourceWhitelist:
     - group: "*"
@@ -133,9 +139,11 @@ spec:
   */}}
   {{- if .Values.apps }}
   destinations:
-    {{- range include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
-    - namespace: {{ . | quote }}
-      name: {{ $.Values.targetCloud | quote }}
+    {{- range $ns := include "cnp-project-base.permittedAppNamespaces" . | fromJsonArray }}
+    {{- range $cloud := compact (list $.Values.targetCloud $.Values.moveTarget) | uniq }}
+    - namespace: {{ $ns | quote }}
+      name: {{ $cloud | quote }}
+    {{- end }}
     {{- end }}
   {{- else }}
   destinations: []

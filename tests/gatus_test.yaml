@@ -1,0 +1,14 @@
+suite: gatus
+templates:
+  - templates/gatus.yaml
+set:
+  projectName: shop
+  features.workloads: true
+  features.gatus: true
+tests:
+  - it: syncs its secret one wave before the Deployment that reads it
+    documentSelector: {path: kind, value: VaultSecret}
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "-1"

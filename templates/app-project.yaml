@@ -111,13 +111,13 @@ metadata:
 spec:
   description: "Isolated boundaries for project {{ .Values.projectName }}"
   {{- /*
-    Imported apps (service, backing) take their values from cnp-projects (D1)
+    Imported apps (service, backing), agents and MCP servers take their values from cnp-projects (D1)
     until their standard pull request is merged (CNP-303): the CMP then sets
     their repoURL and Argo CD reads deploy/values-<app>.yaml there, like a
     template app's. Their release still lives in cnp-projects
     (apps/<project>/<app>/release.yaml), so every imported app needs it.
   */}}
-  {{- $imported := list "service" "backing" }}
+  {{- $imported := list "service" "backing" "agent" "mcp" }}
   {{- $repos := list }}
   sourceRepos:
     - https://github.com/3-Istor/infra-templates.git

@@ -48,9 +48,11 @@ features:
 
 # The registry record's spec.apps (name, type, repoURL, environments). The
 # AppProjects give each app one destination namespace per environment and one
-# allowed source: its repoURL, or cnp-projects for imported apps (type service
-# or backing) without one yet (CNP-303). The workloads render and own those namespaces. environments
-# defaults to [prod]; staging adds <project>-<app>-stg.
+# allowed source: its repoURL, or cnp-projects for imported apps (type service,
+# backing, agent or mcp) without one yet (CNP-303). The workloads render and own those namespaces. environments
+# defaults to [prod]; staging adds <project>-<app>-stg. An agent (type agent)
+# carries isolation, the minimum runtime from the record's spec.ai rights,
+# which labels its namespace.
 apps: []
 
 # Argo CD sync windows of the project's apps AppProject, in AppProject

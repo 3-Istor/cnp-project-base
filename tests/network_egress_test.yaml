@@ -99,3 +99,16 @@ tests:
       - equal:
           path: spec.egress[0].toEntities
           value: [kube-apiserver]
+
+  - it: lets the apps of an AI project reach the AI gateway
+    documentIndex: 0
+    set:
+      features.ai: true
+    asserts:
+      - lengthEqual:
+          path: spec.egress
+          count: 5
+      - equal:
+          path: spec.egress[4].toEndpoints[0].matchLabels
+          value:
+            k8s:io.kubernetes.pod.namespace: ai-gateway

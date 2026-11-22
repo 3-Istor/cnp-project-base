@@ -42,6 +42,14 @@ metadata:
     {{- include "cnp-project-base.deletionProtectionLabel" $ | nindent 4 }}
     {{- end }}
     {{- include "cnp-project-base.logRetentionLabel" $ | nindent 4 }}
+    {{- /*
+      The minimum runtime of an agent's pods, from the record's spec.ai rights:
+      Kyverno sets runtimeClassName from the stronger of this label and the
+      pod's own (infra-templates), so the app repo can raise it, never lower it.
+    */}}
+    {{- if eq ($app.type | default "") "agent" }}
+    cnp.3istor.com/isolation: {{ $app.isolation | default "gvisor" | quote }}
+    {{- end }}
 ---
 apiVersion: v1
 kind: ResourceQuota

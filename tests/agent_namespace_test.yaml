@@ -1,0 +1,58 @@
+suite: agent namespaces
+templates:
+  - templates/namespace.yaml
+  - templates/app-project.yaml
+set:
+  projectName: shop
+  apps:
+    - {name: web, type: fullstack}
+    - {name: bot, type: agent, isolation: kata}
+    - {name: helper, type: agent}
+tests:
+  - it: labels an agent's namespace with the isolation its rights require
+    documentSelector:
+      path: metadata.name
+      value: shop-bot
+    asserts:
+      - equal:
+          path: metadata.labels["cnp.3istor.com/isolation"]
+          value: kata
+
+  - it: defaults an agent to gVisor when the record names no isolation
+    documentSelector:
+      path: metadata.name
+      value: shop-helper
+    asserts:
+      - equal:
+          path: metadata.labels["cnp.3istor.com/isolation"]
+          value: gvisor
+
+  - it: leaves the namespaces of other apps without an isolation label
+    documentSelector:
+      path: metadata.name
+      value: shop-web
+    asserts:
+      - notExists:
+          path: metadata.labels["cnp.3istor.com/isolation"]
+
+  - it: lets Argo CD prune an agent's namespace, which holds no data
+    documentSelector:
+      path: metadata.name
+      value: shop-bot
+    asserts:
+      - notExists:
+          path: metadata.annotations
+
+  - it: lets an agent without a repository read its values from cnp-projects
+    template: templates/app-project.yaml
+    set:
+      features.appProject: true
+      apps:
+        - {name: bot, type: agent}
+    documentSelector:
+      path: metadata.name
+      value: shop
+    asserts:
+      - contains:
+          path: spec.sourceRepos
+          content: https://github.com/3-Istor/cnp-projects.git

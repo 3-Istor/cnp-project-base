@@ -7,13 +7,19 @@ set:
   features.appProject: true
   features.workloads: false
 tests:
-  - it: onprem project renders nothing
+  - it: onprem project gets a claim too
     set:
       targetCloud: onprem
       apps: [{name: api, type: fullstack}]
     asserts:
       - hasDocuments:
-          count: 0
+          count: 2
+      - documentSelector: {path: kind, value: Namespace}
+        equal: {path: metadata.name, value: shop-backups}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: metadata.name, value: shop-api-backend-db-backup}
+      - documentSelector: {path: kind, value: ObjectBucketClaim}
+        equal: {path: spec.bucketName, value: cnpg-shop-api-backend-db}
   - it: fullstack app gets a claim
     set:
       apps: [{name: api, type: fullstack}]

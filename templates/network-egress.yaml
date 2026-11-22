@@ -49,6 +49,12 @@ spec:
         - cidr: ::/0
           except:
             {{- toYaml $.Values.egress.deniedCIDRsV6 | nindent 12 }}
+    {{- if $.Values.features.ai }}
+    {{- /* Models, MCP and A2A, each call checked against the record's spec.ai at the gateway. */}}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: ai-gateway
+    {{- end }}
 ---
 {{- /*
   The RGW sits in the lab network. Only pods that hold a bucket or ship CNPG

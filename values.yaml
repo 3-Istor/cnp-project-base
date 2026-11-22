@@ -41,6 +41,9 @@ features:
   # default: each project runs a week with Cilium policy audit mode and Hubble
   # first, then turns it on.
   egressIsolation: false
+  # The record's spec.ai.enabled: the default egress also lets the app pods
+  # reach the AI gateway (ai-gateway namespace), which holds every AI right.
+  ai: false
   # kubectl over OIDC: members view, admins operate workloads, in the
   # project's namespaces (templates/rbac.yaml). On-prem only, the clouds' API
   # servers don't trust Keycloak.

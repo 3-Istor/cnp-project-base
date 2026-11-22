@@ -1,5 +1,5 @@
-{{- if and .Values.features.appProject (ne .Values.targetCloud "onprem") }}
-{{- /* Rook only runs on-prem: claim each cloud database's backup bucket here, whatever cluster the app runs on. */}}
+{{- if .Values.features.appProject }}
+{{- /* Claims live on-prem (Rook) whatever cluster runs the app, so a move never creates or deletes one. */}}
 apiVersion: v1
 kind: Namespace
 metadata:

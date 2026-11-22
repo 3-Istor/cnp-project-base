@@ -7,6 +7,9 @@ kind: VaultSecret
 metadata:
   name: gatus-secrets
   namespace: {{ .Values.projectName }}-system
+  annotations:
+    # Before the Deployment, like the tunnel token: Argo CD waits for the Secret.
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   path: project-{{ .Values.projectName }}/system/discord 
   vaultRole: project-{{ .Values.projectName }}-system-role
